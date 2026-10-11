@@ -1,12 +1,13 @@
 # db
 
-提供 DuckDB 连接, 建表语句和数据写入接口, 当前支持最新标普500成员名单的 `universe` 表
+提供 DuckDB 连接, 建表语句和数据写入接口, 支持最新标普500成员名单的 `universe` 表和日行情的 `prices` 表
 
 | 文件 | 接口 | 职责 |
 | --- | --- | --- |
 | [connection.py](connection.py) | `get_duckdb(*, path, read_only=True)` | 打开数据库, 默认只读 |
-| [ddl.py](ddl.py) | `UNIVERSE_DDL` | 定义 universe 表结构 |
+| [ddl.py](ddl.py) | `UNIVERSE_DDL`, `PRICES_DDL` | 定义 universe 和 prices 表结构 |
 | [ingestion.py](ingestion.py) | `ingestion_universe(*, df, connection)` | 在事务中完整更新成员名单, 返回写入条数 |
+| [ingestion.py](ingestion.py) | `ingestion_prices(*, df, connection)` | 在事务中按 (ticker, date) 新增或替换日行情, 返回处理条数 |
 
 ## universe 表
 
@@ -88,6 +89,55 @@ print(written, stored)  # 1 1
 DataFrame 列按名字写入, 缺失值写为 SQL NULL, 字段不匹配等错误由 DuckDB 抛出
 其他数据表保留原样
 
+## 写入日行情
+
+`prices` 以 `(ticker, date)` 为主键, 输入为普通索引的长表 DataFrame, 列为
+`date`, `ticker`, `open`, `high`, `low`, `close`, `adj_close`, `volume`, 列顺序不限
+每个主键应对应一条输入记录, `date`, `ticker`, `close` 不可缺失
+`date` 写为 SQL DATE, 不保留日内时间, 此表适用于日行情
+价格和成交量写为 DOUBLE, 沿用输入单位和复权口径, 其余缺失值写为 SQL NULL
+
+相同主键整行替换, 包括将原有值更新为 NULL, 新主键追加, 其他历史行情保留
+返回值是成功处理的输入记录数, 包含新增和替换记录, 重复写入不会增加表中记录数
+空表输入保留已有行情, 建表与写入在同一事务中完成, 失败时整体回滚
+连接要求与 `ingestion_universe` 相同
+
+下载日行情再写入的完整调用见 [Yahoo 行情流程](../sources/USAGE.md#下载入库与计算)。
+`uv run python scripts/ingest_prices.py` 当前只读展示已入库行情,
+并转为 `[date, ticker]` 面板; 它以脚本路径定位数据库, 不依赖当前工作目录。
+
+下面的示例使用内存数据库, 可以独立执行:
+
+```python
+import duckdb
+import pandas as pd
+
+from quanttoolkit.db.ingestion import ingestion_prices
+
+prices = pd.DataFrame(
+    [
+        {
+            "date": "2024-01-02",
+            "ticker": "AAPL",
+            "open": 185.0,
+            "high": 188.0,
+            "low": 184.0,
+            "close": 187.0,
+            "adj_close": 186.0,
+            "volume": 1000.0,
+        }
+    ]
+)
+
+with duckdb.connect(":memory:") as connection:
+    written = ingestion_prices(df=prices, connection=connection)
+    prices["close"] = 188.0
+    updated = ingestion_prices(df=prices, connection=connection)
+    rows = connection.execute("SELECT ticker, close FROM prices").fetchall()
+
+print(written, updated, rows)  # 1 1 [('AAPL', 188.0)]
+```
+
 ## 本地检查
 
 ```bash
@@ -97,6 +147,7 @@ uv run ruff check src/quanttoolkit/db/ingestion.py scripts/ingest_universe.py te
 uv run ruff format --check src/quanttoolkit/db/ingestion.py scripts/ingest_universe.py tests/test_ingestion.py
 ```
 
-测试覆盖文件持久化, 完整替换名单, 重复写入, SQL NULL 和写入失败后的事务回滚
+测试覆盖文件持久化, 完整替换名单, 行情更新与追加, 重复写入, SQL NULL,
+空输入、主键及非空约束、日内时间转换、只读写入拒绝和事务失败后的回滚
 GitHub Actions 生成 XML, HTML 和运行摘要中的覆盖率报告, 上传报告供下载并发送给 Codecov
 首页 Coverage 徽章显示 Codecov 收到的 main 分支覆盖率
