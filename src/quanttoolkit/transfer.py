@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 
-def to_data_ticker_frame(*, df: pd.DataFrame) -> pd.DataFrame:
+def to_date_ticker_frame(*, df: pd.DataFrame) -> pd.DataFrame:
     """将读取的数据转换为 MultIndex DataFrame ['date', 'ticker']"""
 
     df['date'] = pd.to_datetime(df['date'], errors="raise")
@@ -24,7 +24,7 @@ if __name__ == "__main__":
             "volume": [100000, 200000, 220000, 120000, 150000]
         })
 
-    df = to_data_ticker_frame(df = df)
+    df = to_date_ticker_frame(df = df)
 
     print(df)
 

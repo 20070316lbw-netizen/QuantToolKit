@@ -4,5 +4,5 @@ from __future__ import annotations
 
 import pandas as pd
 
-from quanttoolkit.transfer import to_data_ticker_frame
+from quanttoolkit.transfer import to_date_ticker_frame
 
