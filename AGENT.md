@@ -1,19 +1,24 @@
 # 代码编写必须遵守的准则
 
-编写代码时, 不要出现多余的代码, 比如边界考虑情况, 字段校验, 未经过允许, 不能使用 pydantic, dataclass 等内容; 项目不需要 cli 命令行启动, 所以不要使用 argparse
+编写代码时, 不要出现多余的代码, 比如边界考虑情况, 字段校验, 未经过允许, 不能使用 pydantic, dataclass 等内容; 项目不需要 cli 命令行启动, 所以不要使用 argparse,
+项目增加一个新功能时记住编写测试代码; 未经允许不许为了兼容旧代码而保留旧名字和旧接口;
+代码写完了直接停下来让我检查而不是给我选项问我是否提交
 
 
 # 项目数据结构
 
 QuantToolsKit 内函数接口满足:
 
-- 数据源流出最后形态强制流经 `to_date_ticker_frame` 函数, 传回 `['date', 'ticker']` MultiIndex DataFrame
+- 时序数据源的输出流经 `to_date_ticker_frame` 函数, 返回 `['date', 'ticker']` MultiIndex DataFrame
+- `universe` 等静态表的数据源输出以对应 DDL 为准, 返回字段作为普通列的 DataFrame, 不添加日期索引
 - 因子计算, 仓位构造, 收益率, 波动率, 策略比如等权买入持仓不变的 `benchmark` 的单结果返回 `pd.Series`; 多结果保留 DataFrame
 
 # 提交信息
 
 所有 commit 信息统一使用 `类型: 中文描述` 格式, 例如 `feat: 新增动量因子`
 类型可使用 feat、fix、docs、test、refactor、chore 等英文标识；类型标记后的描述统一使用中文
+
+代码编写完毕后由我看完再 commit
 
 
 # 注释、参数说明与调用示范

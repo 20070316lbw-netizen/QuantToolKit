@@ -15,3 +15,10 @@ wheels/
 
 *.zip
 *.db
+
+# Local data downloads and coverage reports
+/data/company_tickers.json
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
