@@ -1,4 +1,4 @@
-"""只读展示本地 prices 表, 转换为 [date, ticker] 行情面板。"""
+"""只读展示本地 prices 表, 转换为 [date, ticker] 行情面板"""
 
 from pathlib import Path
 

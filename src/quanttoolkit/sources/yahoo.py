@@ -8,6 +8,8 @@ from datetime import date, datetime
 import pandas as pd
 from loguru import logger
 
+from quanttoolkit.transfer import to_date_ticker_frame
+
 DateLike = str | date | datetime
 
 _COLUMN_MAP = {
@@ -41,28 +43,34 @@ def get_prices(
     auto_adjust: bool = False,
     progress: bool = True,
 ) -> pd.DataFrame:
-    """抓取一批股票的历史行情, 返回清洗后的长表。
+    """抓取一批股票的历史行情, 返回标准 [date, ticker] 行情面板
 
     Args:
-        tickers: 单个 ticker 或 ticker 列表, 如 "AAPL" 或 ["AAPL", "MSFT"]。
-        start: 起始日期(含), 如 "2020-01-01"。
-        end: 结束日期(不含); 默认到今天(由 yfinance 决定)。
-        interval: yfinance 支持的周期, 如 "1d"/"1wk"/"1mo"。
+        tickers: 单个 ticker 或 ticker 列表, 如 "AAPL" 或 ["AAPL", "MSFT"]
+        start: 起始日期(含), 如 "2020-01-01"
+        end: 结束日期(不含); 默认到今天(由 yfinance 决定)
+        interval: yfinance 支持的周期, 如 "1d"/"1wk"/"1mo"
         auto_adjust: 透传给 yfinance; True 时 yfinance 直接返回复权价并可能
-            丢弃 Adj Close 列, False(默认)保留原始 close 与 adj_close 两列。
+            丢弃 Adj Close 列, False(默认)保留原始 close 与 adj_close 两列
         progress: 是否显示 yfinance 下载进度条, 默认 True, 仅限关键词传入
             进度按处理完成的 ticker 数量推进, 包含失败任务, 不包括清洗和入库
 
     Returns:
-        DataFrame, 列为 [date, ticker, open, high, low, close, adj_close, volume],
-        按 (ticker, date) 排序。找不到数据时返回保留列结构的空 DataFrame。
+        [date, ticker] MultiIndex DataFrame, 按索引升序排序
+        列为 open, high, low, close, adj_close, volume, 单位沿用 Yahoo 行情
+        close 缺失的记录删除, 其他缺失字段保留缺失值
+        找不到数据时返回保留索引和列结构的空 DataFrame
 
     Raises:
-        ValueError: tickers 为空。
+        ValueError: 多证券响应缺少 ticker 列层级
+
+    Example:
+        下载示例需联网
+        >>> prices = get_prices("AAPL", start="2024-01-01", end="2024-02-01", progress=False)
+        >>> list(prices.index.names)
+        ['date', 'ticker']
     """
     ticker_list = [tickers] if isinstance(tickers, str) else list(tickers)
-    if not ticker_list:
-        raise ValueError("tickers 不能为空")
 
     logger.info(
         f"Fetching prices for {len(ticker_list)} ticker(s) "
@@ -105,14 +113,13 @@ def get_prices(
         return _empty_frame()
 
     result = pd.concat(frames, ignore_index=True)
-    result = result.sort_values(["ticker", "date"]).reset_index(drop=True)
-    return result
+    return to_date_ticker_frame(df=result)
 
 
 def _clean_single(
     df: pd.DataFrame, ticker: str, auto_adjust: bool = False
 ) -> pd.DataFrame:
-    """把 yfinance 单 ticker 的宽表整理成标准长表 schema。"""
+    """把 yfinance 单 ticker 的宽表整理成标准长表 schema"""
     df = df.rename(columns=_COLUMN_MAP)
     df = df.reset_index().rename(columns={"Date": "date", "Datetime": "date"})
     df["date"] = pd.to_datetime(df["date"])
@@ -120,7 +127,7 @@ def _clean_single(
         df["date"] = df["date"].dt.tz_localize(None)
     df["ticker"] = ticker
 
-    # 只有数据源明确已复权时, close 才能当作 adj_close；缺少复权价时保留空值。
+    # 只有数据源明确已复权时, close 才能当作 adj_close; 缺少复权价时保留空值
     if "adj_close" not in df.columns and auto_adjust:
         df["adj_close"] = df.get("close")
 
@@ -141,11 +148,4 @@ def _clean_single(
 
 
 def _empty_frame() -> pd.DataFrame:
-    return pd.DataFrame(columns=_OUTPUT_COLUMNS)
-
-
-if __name__ == "__main__":
-    raw = get_prices(
-        tickers="AAPL", start="2020-01-01", end="2020-02-01", auto_adjust=True
-    )
-    print(raw)
+    return to_date_ticker_frame(df=pd.DataFrame(columns=_OUTPUT_COLUMNS))

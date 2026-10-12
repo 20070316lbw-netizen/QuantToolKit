@@ -54,7 +54,7 @@ def test_missing_prices_invalidate_whole_window_and_then_recover(price_panel):
         forward_volatility(df=panel, window=2, gap=0),
         [np.nan, np.nan, 1 / np.sqrt(2), np.nan, np.nan],
     )
-    # gap=1 的标签区间从第二条价格开始, 基准日自身缺失不会污染该窗口。
+    # gap=1 的标签区间从第二条价格开始, 基准日自身缺失不会污染该窗口
     panel.iloc[0, panel.columns.get_loc("close")] = np.nan
     panel.iloc[1, panel.columns.get_loc("close")] = 40.0
     assert forward_volatility(df=panel, window=2, gap=1).iloc[0] == pytest.approx(

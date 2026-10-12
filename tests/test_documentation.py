@@ -5,24 +5,24 @@ from pathlib import Path
 
 import pytest
 
-from quanttoolkit import rebalance, returns, volatility
+from quanttoolkit import rebalance, returns, transfer, volatility
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.parametrize(
-    "name", ["returns", "volatility", "data-structure", "rebalance"]
+    "name", ["returns", "volatility", "data-structure", "rebalance", "factors"]
 )
 def test_offline_documentation_examples(name):
     source = (ROOT / "docs" / f"{name}.md").read_text()
     blocks = re.findall(r"```python\n(.*?)```", source, re.DOTALL)
     assert blocks, "文档应包含可执行示例"
     for block in blocks:
-        # 仅执行仓库中明确列出的离线文档示例, 以校验其断言和 API 契约。
+        # 仅执行仓库中明确列出的离线文档示例, 以校验其断言和 API 契约
         exec(compile(block, f"docs/{name}.md", "exec"), {})  # noqa: S102
 
 
-@pytest.mark.parametrize("module", [returns, volatility, rebalance])
+@pytest.mark.parametrize("module", [returns, volatility, rebalance, transfer])
 def test_calculation_docstrings(module):
     result = doctest.testmod(module)
     assert result.failed == 0

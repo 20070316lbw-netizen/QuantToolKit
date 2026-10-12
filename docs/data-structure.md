@@ -4,17 +4,17 @@
 `[date, ticker]` 的 `MultiIndex`。`date` 层必须为 `DatetimeIndex`, 可以带时区。
 索引键不能缺失, ticker 字符串不能为空或仅含空白, `(date, ticker)` 不能重复。
 
-所选价格列必须存在且列名唯一。非缺失价格必须是有限、严格大于零的实数;
-不自动转换数字字符串, 不接受布尔值、复数、无穷或非正数。允许 `NaN`、`pd.NA`
-和 pandas 可空数值类型。无效索引或价格抛出 `ValueError`, 非 DataFrame 输入抛出 `TypeError`。
+所选价格列应为数值类型, 非缺失价格应为有限正数, 缺失价格使用 `NaN`。
+计算接口直接取列计算, 不额外校验索引、价格或参数, 输入由调用方保证符合约定。
 
 函数内部按 `[date, ticker]` 升序排序, 在每只证券内独立计算。不会修改输入,
 不会删除缺失价格记录、填补价格或补齐日期。每只证券的交易记录可以不等长, 日期可以不一致。
-输出为保留全部输入键、名称明确的 `float64 Series`, 计算不可用的位置保留 `NaN`。
+输出为保留全部输入键、名称明确的 `Series`, 计算不可用的位置保留 `NaN`。
 空输入也必须具有正确索引和价格列结构, 返回空 Series。
 
-数据源与数据库入库接口使用普通长表, `date`, `ticker` 是列。使用
-[`to_date_ticker_frame`](../src/quanttoolkit/transfer.py) 转为计算格式:
+时序数据源输出通过 [`to_date_ticker_frame`](../src/quanttoolkit/transfer.py) 转为计算格式。
+Yahoo 行情可直接用于计算, 入库时用 `.reset_index()` 转为 DDL 对应的长表。
+读取数据库或其他长表后, 使用同一转换函数:
 
 ```python
 import pandas as pd
@@ -34,5 +34,5 @@ assert prices.index.names == ["date", "ticker"]
 assert prices.index.is_monotonic_increasing
 ```
 
-转换器仅转换日期、设置索引和排序, 完整输入校验由计算接口执行。
+转换器仅转换日期、设置索引和排序, 输入是否符合约定由调用方保证。
 历史特征与未来标签的精确区间见 [收益率](returns.md) 和 [波动率](volatility.md)。

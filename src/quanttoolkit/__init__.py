@@ -1,2 +1,1 @@
-def main() -> None:
-    print("Hello from quanttoolkit!")
+"""量化数据获取与计算工具"""

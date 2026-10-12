@@ -14,8 +14,7 @@
 | `future_returns` | `n_periods=5, gap=1` | `P[t+gap+n_periods] / P[t+gap] - 1` | `forward_return_{n_periods}_gap_{gap}` |
 | `log_returns` | 无期数参数 | `log(P[t]) - log(P[t-1])` | `log_return` |
 
-`n_periods` 必须为正整数, `gap` 必须为非负整数; 接受 NumPy 整数, 不接受布尔值。
-参数类型不符抛出 `TypeError`, 数值越界抛出 `ValueError`, 空输入也会校验参数。
+`n_periods` 按正整数传入, `gap` 按非负整数传入, 不额外校验参数。
 
 `gap` 表示从基准记录到入场价格的距离。例如 `gap=1, n_periods=2` 在 `t+1`
 入场, 在 `t+3` 结束, 对应两个单期收益 `r[t+2]` 与 `r[t+3]`。
@@ -29,7 +28,7 @@
 
 历史和未来持有期收益只需要起止端点价格; 中间价格缺失不会使端点收益失效。
 对数收益需要相邻两个价格。历史/未来记录不足, 或所需端点缺失时返回 `NaN`。
-不填补价格、不删除缺失记录、不补齐交易日, 空输入返回命名的空 `float64 Series`。
+不填补价格、不删除缺失记录、不补齐交易日, 空输入返回命名的空 `Series`。
 
 ## 可独立运行的示例
 

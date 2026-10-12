@@ -62,7 +62,7 @@ def test_progress_preserves_prices(monkeypatch, options, expected_progress):
             "volume": [1000.0, 2000.0],
         }
     )
-    pd.testing.assert_frame_equal(result, expected)
+    pd.testing.assert_frame_equal(result, expected.set_index(["date", "ticker"]))
 
 
 @pytest.mark.parametrize("raw", [None, pd.DataFrame()])
@@ -70,9 +70,9 @@ def test_empty_download_preserves_output_columns(monkeypatch, raw):
     monkeypatch.setattr(yf, "download", lambda *args, **kwargs: raw)
     result = get_prices("AAPL", start="2024-01-01")
     assert result.empty
+    assert result.index.names == ["date", "ticker"]
+    assert isinstance(result.index.get_level_values("date"), pd.DatetimeIndex)
     assert result.columns.tolist() == [
-        "date",
-        "ticker",
         "open",
         "high",
         "low",
@@ -80,15 +80,6 @@ def test_empty_download_preserves_output_columns(monkeypatch, raw):
         "adj_close",
         "volume",
     ]
-
-
-def test_empty_ticker_list_fails_before_download(monkeypatch):
-    def unexpected_download(*args, **kwargs):
-        pytest.fail("无证券时不应调用下载")
-
-    monkeypatch.setattr(yf, "download", unexpected_download)
-    with pytest.raises(ValueError, match="不能为空"):
-        get_prices([], start="2024-01-01")
 
 
 @pytest.mark.parametrize("auto_adjust", [False, True])
@@ -137,11 +128,11 @@ def test_single_ticker_cleaning_adjustment_timezone_and_options(
             },
         )
     ]
-    assert result["date"].tolist() == [
+    assert result.index.get_level_values("date").tolist() == [
         pd.Timestamp("2024-01-02 09:30"),
         pd.Timestamp("2024-01-03 09:30"),
     ]
-    assert result["ticker"].tolist() == ["AAPL", "AAPL"]
+    assert result.index.get_level_values("ticker").tolist() == ["AAPL", "AAPL"]
     assert result["close"].tolist() == [101, 102]
     np.testing.assert_allclose(result["open"], [3, np.nan])
     assert result[["high", "low"]].isna().all().all()
@@ -165,7 +156,7 @@ def test_missing_requested_ticker_is_skipped(monkeypatch, tickers, expected_rows
     result = get_prices(tickers, start="2024-01-01")
     assert len(result) == expected_rows
     if expected_rows:
-        assert result["ticker"].tolist() == ["AAPL"]
+        assert result.index.get_level_values("ticker").tolist() == ["AAPL"]
 
 
 def test_single_level_columns_cannot_identify_multiple_tickers(monkeypatch):
@@ -184,7 +175,7 @@ def test_all_bad_closes_produce_empty_frame(monkeypatch):
     )
     monkeypatch.setattr(yf, "download", lambda *args, **kwargs: raw)
     result = get_prices("AAPL", start="2024-01-01", auto_adjust=True)
-    assert result.empty and len(result.columns) == 8
+    assert result.empty and len(result.columns) == 6
 
 
 def test_download_error_is_not_hidden(monkeypatch):

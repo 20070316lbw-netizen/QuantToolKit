@@ -41,14 +41,3 @@ def test_empty_calendar_retains_timezone_precision_and_name():
         rebalance_dates_belong(dates, freq=2),
         pd.Series(index=dates, dtype=dates.dtype, name="rebalance_date"),
     )
-
-
-@pytest.mark.parametrize("function", [rebalance_dates, rebalance_dates_belong])
-def test_calendar_validation(function):
-    for freq in [0, -1, True, np.bool_(True), 1.5, "2"]:
-        with pytest.raises(ValueError, match="freq"):
-            function(pd.DatetimeIndex([]), freq=freq)
-    with pytest.raises(TypeError, match="DatetimeIndex"):
-        function([pd.Timestamp("2024-01-01")], freq=2)
-    with pytest.raises(ValueError, match="缺失"):
-        function(pd.DatetimeIndex([pd.NaT]), freq=2)

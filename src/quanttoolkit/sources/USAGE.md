@@ -54,18 +54,18 @@ with get_duckdb(path=Path("data/quanttoolkit.db"), read_only=False) as connectio
 
 ## Yahoo 行情
 
-`from quanttoolkit.sources import get_prices` 获取行情长表。`tickers` 接受单个字符串或证券列表,
+`from quanttoolkit.sources import get_prices` 获取 `[date, ticker]` MultiIndex 行情面板。`tickers` 接受单个字符串或证券列表,
 `start` 包含起始日期, `end` 不包含结束日期, 默认由 yfinance 决定结束时间。
 `interval` 默认 `"1d"`, `auto_adjust` 默认 `False`, 参数透传给 yfinance。
 
-返回列固定为 `date`, `ticker`, `open`, `high`, `low`, `close`, `adj_close`, `volume`,
-按 `(ticker, date)` 排序。日期去掉时区并保留源数据的当地时间; 数字字段转为数值,
+输出通过 `to_date_ticker_frame` 转换, `date`, `ticker` 作为索引,
+数据列为 `open`, `high`, `low`, `close`, `adj_close`, `volume`, 按 `[date, ticker]` 排序。日期去掉时区并保留源数据的当地时间; 数字字段转为数值,
 无法转换的值设为缺失, `close` 缺失的记录删除。无数据或所有证券均缺失时返回保留列结构的空表。
 
 `auto_adjust=False` 保留原始 close 和源数据提供的 adj_close; 如果源数据缺少复权价,
 adj_close 保持缺失。只有 `auto_adjust=True` 且源数据未返回 Adj Close 时, 才用已复权 close
 填充 adj_close。缺少某只证券时跳过该证券, 多证券响应缺少证券列层级时抛出 `ValueError`。
-空证券列表抛出 `ValueError`, 下载调用抛出的异常继续传播。
+证券列表应非空, 下载调用抛出的异常继续传播。
 
 ### 下载进度
 
@@ -88,7 +88,7 @@ prices = get_prices(
 ### 下载、入库与计算
 
 下面的示例需要网络, 在仓库根目录执行。日行情入库应使用 `interval="1d"`,
-因为数据库的 date 为 SQL DATE, 不保留日内时间。价格计算前需转换为 MultiIndex。
+因为数据库的 date 为 SQL DATE, 不保留日内时间。下载结果可直接用于价格计算, 写入数据库时用 `.reset_index()` 转为 DDL 对应的长表。
 
 ```python
 from pathlib import Path
@@ -98,9 +98,9 @@ from quanttoolkit.returns import historical_return
 from quanttoolkit.sources import get_prices
 from quanttoolkit.transfer import to_date_ticker_frame
 
-raw = get_prices("AAPL", start="2024-01-01", end="2024-02-01", progress=False)
+prices = get_prices("AAPL", start="2024-01-01", end="2024-02-01", progress=False)
 with get_duckdb(path=Path("data/quanttoolkit.db"), read_only=False) as connection:
-    written = ingestion_prices(df=raw, connection=connection)
+    written = ingestion_prices(df=prices.reset_index(), connection=connection)
     stored = connection.execute("SELECT * FROM prices ORDER BY date, ticker").df()
 
 prices = to_date_ticker_frame(df=stored)
