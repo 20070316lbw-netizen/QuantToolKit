@@ -41,15 +41,18 @@ uv run python scripts/ingest_universe.py
 单独调用入库函数:
 
 ```python
-from pathlib import Path
-
-from quanttoolkit.db.connection import get_duckdb
-from quanttoolkit.db.ingestion import ingestion_universe
+from quanttoolkit.db.connection import DB, get_duckdb
+from quanttoolkit.db.operation import SQL_DIR, operation_sql, read_sql
 from quanttoolkit.sources.wikipedia import fetch_sp500_universe
 
 universe = fetch_sp500_universe(json_path="data/company_tickers.json")
-with get_duckdb(path=Path("data/quanttoolkit.db"), read_only=False) as connection:
-    written = ingestion_universe(df=universe, connection=connection)
+with get_duckdb(path=DB, read_only=False) as connection:
+    written = operation_sql(
+        read_sql(SQL_DIR / "universe.sql"),
+        read_sql(SQL_DIR / "universe_ddl.sql"),
+        connection,
+        universe,
+    )
 ```
 
 ## Yahoo 行情
@@ -88,19 +91,23 @@ prices = get_prices(
 ### 下载、入库与计算
 
 下面的示例需要网络, 在仓库根目录执行。日行情入库应使用 `interval="1d"`,
-因为数据库的 date 为 SQL DATE, 不保留日内时间。下载结果可直接用于价格计算, 写入数据库时用 `.reset_index()` 转为 DDL 对应的长表。
+因为数据库的 date 为 SQL DATE, 不保留日内时间。下载结果可直接用于价格计算, 写入数据库时用 `.reset_index()` 转为 `prices` 表对应的长表。
 
 ```python
-from pathlib import Path
-
-from quanttoolkit.db import get_duckdb, ingestion_prices
+from quanttoolkit.db import SQL_DIR, get_duckdb, operation_sql, read_sql
+from quanttoolkit.db.connection import DB
 from quanttoolkit.returns import historical_return
 from quanttoolkit.sources import get_prices
 from quanttoolkit.transfer import to_date_ticker_frame
 
 prices = get_prices("AAPL", start="2024-01-01", end="2024-02-01", progress=False)
-with get_duckdb(path=Path("data/quanttoolkit.db"), read_only=False) as connection:
-    written = ingestion_prices(df=prices.reset_index(), connection=connection)
+with get_duckdb(path=DB, read_only=False) as connection:
+    written = operation_sql(
+        read_sql(SQL_DIR / "prices.sql"),
+        read_sql(SQL_DIR / "prices_ddl.sql"),
+        connection,
+        prices.reset_index(),
+    )
     stored = connection.execute("SELECT * FROM prices ORDER BY date, ticker").df()
 
 prices = to_date_ticker_frame(df=stored)
@@ -108,7 +115,6 @@ returns = historical_return(df=prices, n_periods=5)
 print(written, returns.tail())
 ```
 
-[`scripts/ingest_prices.py`](../../../scripts/ingest_prices.py) 当前只读展示已有 prices 表,
-不执行下载或入库。独立计算的离线示例见 [收益率文档](../../../docs/returns.md)。
+[`scripts/ingest_prices.py`](../../../scripts/ingest_prices.py) 读取 `universe` 中的代码, 下载日行情并写入 `prices`。独立计算的离线示例见 [收益率文档](../../../docs/returns.md)。
 
 测试用模拟下载响应校验清洗及下游流程, 不依赖实时 Yahoo 服务。

@@ -1,0 +1,2 @@
+DELETE FROM universe;
+INSERT INTO universe BY NAME SELECT * FROM df;

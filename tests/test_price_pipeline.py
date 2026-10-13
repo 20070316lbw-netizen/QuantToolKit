@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
-from quanttoolkit.db import get_duckdb, ingestion_prices
+from quanttoolkit.db import SQL_DIR, get_duckdb, operation_sql, read_sql
 from quanttoolkit.factors.mom_base import base_momfactor
 from quanttoolkit.factors.reversal_base import base_reversalfactor
 from quanttoolkit.rebalance import rebalance_dates_belong
@@ -31,7 +31,15 @@ def test_download_ingest_reopen_and_calculate(tmp_path, monkeypatch):
     direct_returns = historical_return(df=downloaded, n_periods=2)
     path = tmp_path / "nested" / "prices.db"
     with get_duckdb(path=path, read_only=False) as connection:
-        assert ingestion_prices(df=downloaded.reset_index(), connection=connection) == 8
+        assert (
+            operation_sql(
+                read_sql(SQL_DIR / "prices.sql"),
+                read_sql(SQL_DIR / "prices_ddl.sql"),
+                connection,
+                downloaded.reset_index(),
+            )
+            == 8
+        )
     with get_duckdb(path=path) as connection:
         stored = connection.execute(
             "SELECT * FROM prices ORDER BY ticker DESC, date DESC"

@@ -7,8 +7,7 @@ import duckdb
 import pandas as pd
 import pytest
 
-from quanttoolkit.db.ddl import UNIVERSE_DDL
-from quanttoolkit.db.ingestion import ingestion_universe
+from quanttoolkit.db.operation import SQL_DIR, operation_sql, read_sql
 from quanttoolkit.sources import wikipedia
 
 
@@ -95,13 +94,17 @@ def test_fetch_sp500_universe(page_requests, json_path, path_type):
 def test_universe_ddl_round_trip(page_requests, json_path):
     result = wikipedia.fetch_sp500_universe(json_path)
 
+    ddl = read_sql(SQL_DIR / "universe_ddl.sql")
     with duckdb.connect(":memory:") as connection:
-        connection.execute(UNIVERSE_DDL)
-        connection.execute(UNIVERSE_DDL)
+        connection.execute(ddl)
+        connection.execute(ddl)
         columns = connection.execute("DESCRIBE universe").fetchall()
         assert [column[0] for column in columns] == result.columns.tolist()
         assert [column[1] for column in columns] == ["VARCHAR"] * 5
-        assert ingestion_universe(df=result, connection=connection) == 2
+        assert (
+            operation_sql(read_sql(SQL_DIR / "universe.sql"), ddl, connection, result)
+            == 2
+        )
         rows = connection.execute("SELECT * FROM universe ORDER BY ticker").fetchall()
 
     assert rows == [

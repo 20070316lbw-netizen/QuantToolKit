@@ -13,7 +13,7 @@
 空输入也必须具有正确索引和价格列结构, 返回空 Series。
 
 时序数据源输出通过 [`to_date_ticker_frame`](../src/quanttoolkit/transfer.py) 转为计算格式。
-Yahoo 行情可直接用于计算, 入库时用 `.reset_index()` 转为 DDL 对应的长表。
+Yahoo 行情可直接用于计算, 入库时用 `.reset_index()` 转为 `prices` 表对应的长表。
 读取数据库或其他长表后, 使用同一转换函数:
 
 ```python

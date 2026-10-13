@@ -59,16 +59,3 @@ def base_momfactor(
     rolled.name = f"mom_{window}_{skip}" if skip else f"mom_{window}"
 
     return rolled
-
-
-if __name__ == "__main__":
-    from quanttoolkit.db.connection import DB, get_duckdb
-    from quanttoolkit.transfer import to_date_ticker_frame
-
-    with get_duckdb(path=DB, read_only=True) as con:
-        df = con.execute("SELECT * FROM prices").df()
-        df = to_date_ticker_frame(df=df)
-
-    factor = base_momfactor(prices=df, window=5, skip=1, price_col="adj_close")
-
-    print(factor)

@@ -1,18 +1,44 @@
-"""只读展示本地 prices 表, 转换为 [date, ticker] 行情面板"""
+"""按 universe 下载日行情并写入 prices"""
 
-from pathlib import Path
+from __future__ import annotations
 
-from quanttoolkit.db import get_duckdb
-from quanttoolkit.transfer import to_date_ticker_frame
-
-ROOT = Path(__file__).resolve().parent.parent
-DB = ROOT / "data" / "quanttoolkit.db"
+from quanttoolkit.db.connection import DB, get_duckdb
+from quanttoolkit.db.operation import SQL_DIR, operation_sql, read_sql
+from quanttoolkit.sources import get_prices
 
 
-def main(*, path: Path = DB) -> None:
-    with get_duckdb(path=path, read_only=True) as connection:
-        df = connection.execute("SELECT * FROM prices").df()
-    print(to_date_ticker_frame(df=df))
+def main() -> None:
+    with get_duckdb(path=DB, read_only=True) as con:
+        universe = con.execute("SELECT ticker FROM universe").df()["ticker"]
+
+    with get_duckdb(path=DB, read_only=False) as connection:
+        prices = get_prices(
+            tickers=universe,
+            start="2016-01-01",
+            end="2026-10-10",
+            auto_adjust=True,
+            progress=True,
+        )
+        written = operation_sql(
+            read_sql(SQL_DIR / "prices.sql"),
+            read_sql(SQL_DIR / "prices_ddl.sql"),
+            connection,
+            prices.reset_index(),
+        )
+
+    with get_duckdb(path=DB, read_only=True) as con:
+        summary = con.execute(
+            """
+            SELECT COUNT(*),
+                   COUNT(DISTINCT ticker),
+                   MIN(date),
+                   MAX(date)
+            FROM prices
+            """
+        ).fetchone()
+
+    print(f"写入 {written} 条")
+    print(f"库内 {summary[0]} 条, {summary[1]} 个 ticker, {summary[2]} ~ {summary[3]}")
 
 
 if __name__ == "__main__":

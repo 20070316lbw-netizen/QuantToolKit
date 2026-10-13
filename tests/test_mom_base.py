@@ -1,13 +1,9 @@
 import doctest
-import runpy
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from quanttoolkit.db import connection as db_connection
-from quanttoolkit.db import ingestion_prices
 from quanttoolkit.factors import mom_base
 from quanttoolkit.factors.mom_base import base_momfactor
 
@@ -77,37 +73,3 @@ def test_momentum_docstring_example():
     result = doctest.testmod(mom_base)
     assert result.failed == 0
     assert result.attempted > 0
-
-
-def test_momentum_module_example_uses_read_only_database(tmp_path, monkeypatch, capsys):
-    prices = pd.DataFrame(
-        {
-            "date": pd.bdate_range("2024-01-02", periods=7),
-            "ticker": ["A"] * 7,
-            "close": np.exp(np.arange(7, dtype=float)),
-            "adj_close": np.exp(np.arange(7, dtype=float)),
-        }
-    )
-    path = tmp_path / "prices.db"
-    get_duckdb = db_connection.get_duckdb
-    with get_duckdb(path=path, read_only=False) as connection:
-        ingestion_prices(df=prices, connection=connection)
-
-    calls = []
-
-    def open_test_database(*, path, read_only):
-        calls.append((path, read_only))
-        return get_duckdb(path=tmp_path / "prices.db", read_only=read_only)
-
-    monkeypatch.setattr(db_connection, "get_duckdb", open_test_database)
-    script = runpy.run_path(mom_base.__file__, run_name="__main__")
-    assert calls == [
-        (
-            Path(mom_base.__file__).resolve().parents[3] / "data" / "quanttoolkit.db",
-            True,
-        )
-    ]
-    factor = script["factor"]
-    assert factor.name == "mom_5_1"
-    np.testing.assert_allclose(factor, [np.nan] * 6 + [5.0])
-    assert "mom_5_1" in capsys.readouterr().out

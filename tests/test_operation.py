@@ -5,7 +5,16 @@ import pandas as pd
 import pytest
 
 from quanttoolkit.db.connection import get_duckdb
-from quanttoolkit.db.ingestion import ingestion_prices, ingestion_universe
+from quanttoolkit.db.operation import SQL_DIR, operation_sql, read_sql
+
+
+def write(connection, name, df):
+    return operation_sql(
+        read_sql(SQL_DIR / f"{name}.sql"),
+        read_sql(SQL_DIR / f"{name}_ddl.sql"),
+        connection,
+        df,
+    )
 
 
 @pytest.fixture
@@ -21,10 +30,10 @@ def universe():
     )
 
 
-def test_ingestion_persists_data(tmp_path, universe):
+def test_universe_persists_data(tmp_path, universe):
     path = tmp_path / "data" / "universe.db"
     with get_duckdb(path=path, read_only=False) as connection:
-        assert ingestion_universe(df=universe, connection=connection) == 2
+        assert write(connection, "universe", universe) == 2
 
     with get_duckdb(path=path) as connection:
         rows = connection.execute("SELECT * FROM universe ORDER BY ticker").fetchall()
@@ -54,7 +63,7 @@ def prices():
 def test_prices_persist_data(tmp_path, prices):
     path = tmp_path / "prices.db"
     with get_duckdb(path=path, read_only=False) as connection:
-        assert ingestion_prices(df=prices, connection=connection) == 3
+        assert write(connection, "prices", prices) == 3
 
     with get_duckdb(path=path) as connection:
         rows = connection.execute(
@@ -76,10 +85,10 @@ def test_prices_update_and_append(prices, universe):
     latest = latest[latest.columns[::-1]]
 
     with duckdb.connect(":memory:") as connection:
-        ingestion_universe(df=universe, connection=connection)
-        ingestion_prices(df=prices, connection=connection)
-        assert ingestion_prices(df=latest, connection=connection) == 2
-        assert ingestion_prices(df=latest, connection=connection) == 2
+        write(connection, "universe", universe)
+        write(connection, "prices", prices)
+        assert write(connection, "prices", latest) == 2
+        assert write(connection, "prices", latest) == 2
         assert connection.execute(
             "SELECT date, ticker, close, adj_close FROM prices ORDER BY ticker, date"
         ).fetchall() == [
@@ -98,27 +107,27 @@ def test_prices_failure_rolls_back(prices):
     invalid.loc[2, "close"] = float("nan")
 
     with duckdb.connect(":memory:") as connection:
-        ingestion_prices(df=prices, connection=connection)
+        write(connection, "prices", prices)
         before = connection.execute(
             "SELECT * FROM prices ORDER BY ticker, date"
         ).fetchall()
 
         with pytest.raises(duckdb.ConstraintException):
-            ingestion_prices(df=invalid, connection=connection)
+            write(connection, "prices", invalid)
 
         assert (
             connection.execute("SELECT * FROM prices ORDER BY ticker, date").fetchall()
             == before
         )
-        assert ingestion_prices(df=prices, connection=connection) == 3
+        assert write(connection, "prices", prices) == 3
 
 
 def test_empty_prices_create_table_and_preserve_existing_rows(prices):
     with duckdb.connect(":memory:") as connection:
-        assert ingestion_prices(df=prices.iloc[:0], connection=connection) == 0
+        assert write(connection, "prices", prices.iloc[:0]) == 0
         assert connection.execute("SELECT COUNT(*) FROM prices").fetchone() == (0,)
-        ingestion_prices(df=prices, connection=connection)
-        assert ingestion_prices(df=prices.iloc[:0], connection=connection) == 0
+        write(connection, "prices", prices)
+        assert write(connection, "prices", prices.iloc[:0]) == 0
         assert connection.execute("SELECT COUNT(*) FROM prices").fetchone() == (3,)
 
 
@@ -128,16 +137,16 @@ def test_prices_required_columns_rollback_even_on_initial_creation(prices, colum
     invalid.loc[0, column] = None
     with duckdb.connect(":memory:") as connection:
         with pytest.raises(duckdb.ConstraintException):
-            ingestion_prices(df=invalid, connection=connection)
+            write(connection, "prices", invalid)
         assert connection.execute("SHOW TABLES").fetchall() == []
-        assert ingestion_prices(df=prices, connection=connection) == 3
+        assert write(connection, "prices", prices) == 3
 
 
 def test_prices_date_is_daily_and_schema_rejects_duplicate_keys(prices):
     prices = prices.copy()
     prices.loc[0, "date"] = pd.Timestamp("2024-01-02 15:30")
     with duckdb.connect(":memory:") as connection:
-        ingestion_prices(df=prices, connection=connection)
+        write(connection, "prices", prices)
         assert connection.execute(
             "SELECT date FROM prices WHERE ticker='AAPL' ORDER BY date"
         ).fetchall() == [(date(2024, 1, 2),), (date(2024, 1, 3),)]
@@ -148,54 +157,52 @@ def test_prices_date_is_daily_and_schema_rejects_duplicate_keys(prices):
 def test_prices_bad_columns_and_read_only_database_preserve_data(tmp_path, prices):
     path = tmp_path / "prices.db"
     with get_duckdb(path=path, read_only=False) as connection:
-        ingestion_prices(df=prices, connection=connection)
+        write(connection, "prices", prices)
         before = connection.execute(
             "SELECT * FROM prices ORDER BY ticker, date"
         ).fetchall()
         with pytest.raises(duckdb.Error):
-            ingestion_prices(
-                df=prices.rename(columns={"close": "unknown"}), connection=connection
-            )
+            write(connection, "prices", prices.rename(columns={"close": "unknown"}))
         assert (
             connection.execute("SELECT * FROM prices ORDER BY ticker, date").fetchall()
             == before
         )
     with get_duckdb(path=path) as connection:
         with pytest.raises(duckdb.Error):
-            ingestion_prices(df=prices, connection=connection)
+            write(connection, "prices", prices)
         assert (
             connection.execute("SELECT * FROM prices ORDER BY ticker, date").fetchall()
             == before
         )
 
 
-def test_ingestion_replaces_current_members(universe):
+def test_universe_replaces_current_members(universe):
     latest = universe.iloc[:1].copy()
     latest["sec_title"] = "APPLE INC"
     latest = latest[latest.columns[::-1]]
 
     with duckdb.connect(":memory:") as connection:
         connection.execute("CREATE TABLE other_data AS SELECT 42 AS value")
-        ingestion_universe(df=universe, connection=connection)
-        assert ingestion_universe(df=latest, connection=connection) == 1
-        assert ingestion_universe(df=latest, connection=connection) == 1
+        write(connection, "universe", universe)
+        assert write(connection, "universe", latest) == 1
+        assert write(connection, "universe", latest) == 1
         assert connection.execute(
             "SELECT ticker, sec_title FROM universe"
         ).fetchall() == [("AAPL", "APPLE INC")]
         assert connection.execute("SELECT value FROM other_data").fetchone() == (42,)
 
 
-def test_ingestion_failure_rolls_back(universe):
+def test_universe_failure_rolls_back(universe):
     invalid = universe.rename(columns={"cik": "unknown_column"})
     with duckdb.connect(":memory:") as connection:
-        ingestion_universe(df=universe, connection=connection)
+        write(connection, "universe", universe)
         before = connection.execute("SELECT * FROM universe ORDER BY ticker").fetchall()
 
         with pytest.raises(duckdb.Error):
-            ingestion_universe(df=invalid, connection=connection)
+            write(connection, "universe", invalid)
 
         assert (
             connection.execute("SELECT * FROM universe ORDER BY ticker").fetchall()
             == before
         )
-        assert ingestion_universe(df=universe, connection=connection) == 2
+        assert write(connection, "universe", universe) == 2

@@ -1,11 +1,9 @@
 from quanttoolkit.db.connection import get_duckdb
-from quanttoolkit.db.ddl import PRICES_DDL, UNIVERSE_DDL
-from quanttoolkit.db.ingestion import ingestion_prices, ingestion_universe
+from quanttoolkit.db.operation import SQL_DIR, operation_sql, read_sql
 
 __all__ = [
-    "PRICES_DDL",
-    "UNIVERSE_DDL",
+    "SQL_DIR",
     "get_duckdb",
-    "ingestion_prices",
-    "ingestion_universe",
+    "operation_sql",
+    "read_sql",
 ]

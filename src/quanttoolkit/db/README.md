@@ -1,13 +1,28 @@
 # db
 
-提供 DuckDB 连接, 建表语句和数据写入接口, 支持最新标普500成员名单的 `universe` 表和日行情的 `prices` 表
+提供 DuckDB 连接和事务写入, 支持最新标普500成员名单的 `universe` 表和日行情的 `prices` 表
 
 | 文件 | 接口 | 职责 |
 | --- | --- | --- |
 | [connection.py](connection.py) | `get_duckdb(*, path, read_only=True)` | 打开数据库, 默认只读 |
-| [ddl.py](ddl.py) | `UNIVERSE_DDL`, `PRICES_DDL` | 定义 universe 和 prices 表结构 |
-| [ingestion.py](ingestion.py) | `ingestion_universe(*, df, connection)` | 在事务中完整更新成员名单, 返回写入条数 |
-| [ingestion.py](ingestion.py) | `ingestion_prices(*, df, connection)` | 在事务中按 (ticker, date) 新增或替换日行情, 返回处理条数 |
+| [connection.py](connection.py) | `DB` | 默认数据库路径 `data/quanttoolkit.db` |
+| [operation.py](operation.py) | `read_sql(path)` | 读取 `sql` 目录中的语句 |
+| [operation.py](operation.py) | `operation_sql(sql, ddl, connection, df=None)` | 在事务中先建表再写入, 返回最后一条语句的计数 |
+| [sql](sql) | `*_ddl.sql`, `*.sql` | 建表语句和写入语句 |
+
+## SQL 文件
+
+语句都在 [sql](sql) 目录, 由 `SQL_DIR` 定位
+
+| 文件 | 作用 |
+| --- | --- |
+| `universe_ddl.sql` | 创建 `universe` |
+| `universe.sql` | 清空后按列名写入整份成员名单 |
+| `prices_ddl.sql` | 创建 `prices`, 主键为 `(ticker, date)` |
+| `prices.sql` | 按 `(ticker, date)` 新增或整行替换日行情 |
+
+写入语句里的 `df` 指向 `operation_sql` 的同名参数
+DuckDB 只在执行 `execute` 的函数里查找这个名字, 所以 DataFrame 必须传给 `operation_sql`, 不能只放在调用方的局部变量里
 
 ## universe 表
 
@@ -40,11 +55,9 @@ uv run python scripts/ingest_universe.py
 ## 读取数据库
 
 ```python
-from pathlib import Path
+from quanttoolkit.db.connection import DB, get_duckdb
 
-from quanttoolkit.db.connection import get_duckdb
-
-with get_duckdb(path=Path("data/quanttoolkit.db")) as connection:
+with get_duckdb(path=DB) as connection:
     members = connection.execute("SELECT * FROM universe ORDER BY ticker").df()
 
 print(members.head())
@@ -52,7 +65,7 @@ print(members.head())
 
 `get_duckdb` 默认 `read_only=True`, 数据库不存在时抛出 `FileNotFoundError`
 使用 `read_only=False` 可创建数据库及父目录, 连接由调用方通过 `with` 或 `close()` 关闭
-建表由入库函数负责
+建表由 `operation_sql` 在写入事务里执行
 
 ## 单独写入成员名单
 
@@ -62,7 +75,7 @@ print(members.head())
 import duckdb
 import pandas as pd
 
-from quanttoolkit.db.ingestion import ingestion_universe
+from quanttoolkit.db.operation import SQL_DIR, operation_sql, read_sql
 
 universe = pd.DataFrame(
     [
@@ -77,7 +90,12 @@ universe = pd.DataFrame(
 )
 
 with duckdb.connect(":memory:") as connection:
-    written = ingestion_universe(df=universe, connection=connection)
+    written = operation_sql(
+        read_sql(SQL_DIR / "universe.sql"),
+        read_sql(SQL_DIR / "universe_ddl.sql"),
+        connection,
+        universe,
+    )
     stored = connection.execute("SELECT COUNT(*) FROM universe").fetchone()[0]
 
 print(written, stored)  # 1 1
@@ -98,13 +116,12 @@ DataFrame 列按名字写入, 缺失值写为 SQL NULL, 字段不匹配等错误
 价格和成交量写为 DOUBLE, 沿用输入单位和复权口径, 其余缺失值写为 SQL NULL
 
 相同主键整行替换, 包括将原有值更新为 NULL, 新主键追加, 其他历史行情保留
-返回值是成功处理的输入记录数, 包含新增和替换记录, 重复写入不会增加表中记录数
+返回值是最后一条写入语句的计数, 重复写入不会增加表中记录数
 空表输入保留已有行情, 建表与写入在同一事务中完成, 失败时整体回滚
-连接要求与 `ingestion_universe` 相同
 
-下载日行情再写入的完整调用见 [Yahoo 行情流程](../sources/USAGE.md#下载入库与计算)。
-`uv run python scripts/ingest_prices.py` 当前只读展示已入库行情,
-并转为 `[date, ticker]` 面板; 它以脚本路径定位数据库, 不依赖当前工作目录。
+下载日行情再写入的完整调用见 [Yahoo 行情流程](../sources/USAGE.md#下载入库与计算)
+`uv run python scripts/ingest_prices.py` 读取已入库的 `universe`, 下载日行情并写入 `prices`
+它使用 `connection.DB` 定位数据库, 不依赖当前工作目录
 
 下面的示例使用内存数据库, 可以独立执行:
 
@@ -112,7 +129,7 @@ DataFrame 列按名字写入, 缺失值写为 SQL NULL, 字段不匹配等错误
 import duckdb
 import pandas as pd
 
-from quanttoolkit.db.ingestion import ingestion_prices
+from quanttoolkit.db.operation import SQL_DIR, operation_sql, read_sql
 
 prices = pd.DataFrame(
     [
@@ -130,9 +147,19 @@ prices = pd.DataFrame(
 )
 
 with duckdb.connect(":memory:") as connection:
-    written = ingestion_prices(df=prices, connection=connection)
+    written = operation_sql(
+        read_sql(SQL_DIR / "prices.sql"),
+        read_sql(SQL_DIR / "prices_ddl.sql"),
+        connection,
+        prices,
+    )
     prices["close"] = 188.0
-    updated = ingestion_prices(df=prices, connection=connection)
+    updated = operation_sql(
+        read_sql(SQL_DIR / "prices.sql"),
+        read_sql(SQL_DIR / "prices_ddl.sql"),
+        connection,
+        prices,
+    )
     rows = connection.execute("SELECT ticker, close FROM prices").fetchall()
 
 print(written, updated, rows)  # 1 1 [('AAPL', 188.0)]
@@ -141,13 +168,13 @@ print(written, updated, rows)  # 1 1 [('AAPL', 188.0)]
 ## 本地检查
 
 ```bash
-uv run pytest -q --cov=quanttoolkit --cov-branch --cov-report=term-missing
-uv run python -m doctest src/quanttoolkit/db/ingestion.py
-uv run ruff check src/quanttoolkit/db/ingestion.py scripts/ingest_universe.py tests/test_ingestion.py
-uv run ruff format --check src/quanttoolkit/db/ingestion.py scripts/ingest_universe.py tests/test_ingestion.py
+uv run pytest -q tests/test_operation.py tests/test_wikipedia.py tests/test_price_pipeline.py
+uv run python -m doctest src/quanttoolkit/db/operation.py
+uv run ruff check src/quanttoolkit/db/operation.py scripts/ingest_universe.py tests/test_operation.py
+uv run ruff format --check src/quanttoolkit/db/operation.py scripts/ingest_universe.py tests/test_operation.py
 ```
 
 测试覆盖文件持久化, 完整替换名单, 行情更新与追加, 重复写入, SQL NULL,
-空输入、主键及非空约束、日内时间转换、只读写入拒绝和事务失败后的回滚
+空输入, 主键及非空约束, 日内时间转换, 只读写入拒绝和事务失败后的回滚
 GitHub Actions 生成 XML, HTML 和运行摘要中的覆盖率报告, 上传报告供下载并发送给 Codecov
 首页 Coverage 徽章显示 Codecov 收到的 main 分支覆盖率
