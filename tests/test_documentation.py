@@ -5,13 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from quanttoolkit import rebalance, returns, transfer, volatility
+from quanttoolkit import metrics, rebalance, returns, transfer, volatility
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.parametrize(
-    "name", ["returns", "volatility", "data-structure", "rebalance", "factors"]
+    "name",
+    ["returns", "volatility", "data-structure", "rebalance", "factors", "metrics"],
 )
 def test_offline_documentation_examples(name):
     source = (ROOT / "docs" / f"{name}.md").read_text()
@@ -22,7 +23,7 @@ def test_offline_documentation_examples(name):
         exec(compile(block, f"docs/{name}.md", "exec"), {})  # noqa: S102
 
 
-@pytest.mark.parametrize("module", [returns, volatility, rebalance, transfer])
+@pytest.mark.parametrize("module", [returns, volatility, rebalance, transfer, metrics])
 def test_calculation_docstrings(module):
     result = doctest.testmod(module)
     assert result.failed == 0

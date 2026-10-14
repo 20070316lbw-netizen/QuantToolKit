@@ -9,10 +9,12 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "duckdb>=1.5.6",
+    "lightgbm>=4.7.0",
     "loguru>=0.7.3",
     "lxml>=6.0",
     "numpy>=2.5.4",
     "pandas>=3.0.6",
+    "scikit-learn>=1.9.1",
     "torch>=2.14.1",
     "yfinance>=1.7.0",
 ]
