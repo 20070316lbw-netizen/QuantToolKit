@@ -24,7 +24,7 @@ uv add "quanttoolkit @ git+https://github.com/20070316lbw-netizen/QuantToolKit.g
 | [returns](docs/returns.md) | 历史与未来简单收益率, 单期对数收益率 | 已实现 |
 | [volatility](docs/volatility.md) | 历史与未来简单收益波动率 | 已实现 |
 | [rebalance](docs/rebalance.md) | 共同交易日历的调仓日期与区间归属 | 已实现 |
-| [factors](docs/factors.md) | 动量与反转因子基础函数 | 已实现 |
+| [factors](docs/factors.md) | 动量, 反转与对数波动率因子基础函数 | 已实现 |
 
 标普500成员抓取到入库的完整流程见 [db 使用说明](src/quanttoolkit/db/README.md#抓取到入库)
 

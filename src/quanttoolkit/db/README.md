@@ -124,7 +124,7 @@ DataFrame 列按名字写入, 缺失值写为 SQL NULL, 字段不匹配等错误
 空表输入保留已有行情, 建表与写入在同一事务中完成, 失败时整体回滚
 
 下载日行情再写入的完整调用见 [Yahoo 行情流程](../sources/USAGE.md#下载入库与计算)
-`uv run python scripts/ingest_prices.py` 读取已入库的 `universe`, 下载日行情并写入 `prices`
+`uv run python scripts/ingest_prices.py` 读取已入库的 `universe`, 下载日行情, 补齐每只证券首尾之间的缺失交易日后写入 `prices`
 它使用 `connection.DB` 定位数据库, 不依赖当前工作目录
 
 下面的示例使用内存数据库, 可以独立执行:

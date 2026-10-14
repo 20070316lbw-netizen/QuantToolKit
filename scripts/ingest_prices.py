@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from quanttoolkit.db.connection import DB, get_duckdb
 from quanttoolkit.db.operation import SQL_DIR, operation_sql, read_sql
+from quanttoolkit.prices import fill_price_gaps
 from quanttoolkit.sources import get_prices
 
 
@@ -12,12 +13,14 @@ def main() -> None:
         universe = con.execute("SELECT ticker FROM universe").df()["ticker"]
 
     with get_duckdb(path=DB, read_only=False) as connection:
-        prices = get_prices(
-            tickers=universe,
-            start="2016-01-01",
-            end="2026-10-10",
-            auto_adjust=True,
-            progress=True,
+        prices = fill_price_gaps(
+            get_prices(
+                tickers=universe,
+                start="2016-01-01",
+                end="2026-10-10",
+                auto_adjust=True,
+                progress=True,
+            )
         )
         written = operation_sql(
             read_sql(SQL_DIR / "prices.sql"),

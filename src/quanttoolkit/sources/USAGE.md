@@ -106,16 +106,19 @@ prices = get_prices(
 ### 下载、入库与计算
 
 下面的示例需要网络, 在仓库根目录执行。日行情入库应使用 `interval="1d"`,
-因为数据库的 date 为 SQL DATE, 不保留日内时间。下载结果可直接用于价格计算, 写入数据库时用 `.reset_index()` 转为 `prices` 表对应的长表。
+因为数据库的 date 为 SQL DATE, 不保留日内时间。写入前用 `fill_price_gaps` 补齐每只证券首尾之间、其他证券已有成交而它缺失的交易日, 价格沿用前一条记录, volume 写 0。上市前和最后一条行情之后不补, 日历只用数据里已经出现的日期, 不用自然日。下载结果可直接用于价格计算, 写入数据库时用 `.reset_index()` 转为 `prices` 表对应的长表。
 
 ```python
 from quanttoolkit.db import SQL_DIR, get_duckdb, operation_sql, read_sql
 from quanttoolkit.db.connection import DB
+from quanttoolkit.prices import fill_price_gaps
 from quanttoolkit.returns import historical_return
 from quanttoolkit.sources import get_prices
 from quanttoolkit.transfer import to_date_ticker_frame
 
-prices = get_prices("AAPL", start="2024-01-01", end="2024-02-01", progress=False)
+prices = fill_price_gaps(
+    get_prices("AAPL", start="2024-01-01", end="2024-02-01", progress=False)
+)
 with get_duckdb(path=DB, read_only=False) as connection:
     written = operation_sql(
         read_sql(SQL_DIR / "prices.sql"),

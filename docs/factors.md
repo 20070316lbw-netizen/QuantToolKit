@@ -42,3 +42,35 @@ assert np.isclose(factor.iloc[4], -np.log(118.8 / 110.0))
 不填补价格, 不年化, 不做波动率调整, 不修改输入, 不额外校验字段或参数
 `skip=0` 时名称为 `reversal_{window}`, 否则为 `reversal_{window}_{skip}`
 首次有效值需要 `window+skip+1` 条价格记录, 日历缺口不会补齐
+
+## 对数波动率
+
+[`base_logvolfactor`](../src/quanttoolkit/factors/logvol_base.py) 计算窗口内单期对数收益率的样本标准差
+在记录 t 上, 因子为 `std(log(P[t-window+1] / P[t-window]), ..., log(P[t] / P[t-1]))`, `ddof=1`
+名称为 `logvol_{window}`
+不年化, 不填补价格, 不修改输入
+窗口内对数收益缺失或记录不足时为 NaN
+样本标准差至少需要 2 条对数收益, 首次有效值需要 `window+1` 条价格记录
+
+```python
+import numpy as np
+import pandas as pd
+
+from quanttoolkit.factors.logvol_base import base_logvolfactor
+from quanttoolkit.transfer import to_date_ticker_frame
+
+prices = to_date_ticker_frame(
+    df=pd.DataFrame(
+        {
+            "date": pd.bdate_range("2024-01-02", periods=4),
+            "ticker": ["A"] * 4,
+            "adj_close": [1.0, 2.0, 4.0, 8.0],
+        }
+    )
+)
+factor = base_logvolfactor(prices, window=2)
+assert factor.name == "logvol_2"
+assert factor.iloc[:2].isna().all()
+assert np.isclose(factor.iloc[2], 0.0)
+assert np.isclose(factor.iloc[3], 0.0)
+```
