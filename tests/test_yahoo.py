@@ -6,10 +6,20 @@ import yfinance as yf
 from quanttoolkit.sources import get_prices
 from quanttoolkit.sources import yahoo as yahoo_source
 
+_REAL_PAUSE = yahoo_source._pause
+
 
 @pytest.fixture(autouse=True)
 def _no_download_pause(monkeypatch):
     monkeypatch.setattr(yahoo_source, "_pause", lambda _seconds: None)
+
+
+def test_pause_sleeps_only_for_positive_seconds(monkeypatch):
+    slept = []
+    monkeypatch.setattr(yahoo_source.time, "sleep", slept.append)
+    _REAL_PAUSE(0)
+    _REAL_PAUSE(1.0)
+    assert slept == [1.0]
 
 
 @pytest.mark.parametrize(
