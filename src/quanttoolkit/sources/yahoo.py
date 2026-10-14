@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import time
+from collections.abc import Callable, Sequence
 from datetime import date, datetime
 
 import pandas as pd
@@ -11,6 +12,15 @@ from loguru import logger
 from quanttoolkit.transfer import to_date_ticker_frame
 
 DateLike = str | date | datetime
+
+# 一次并发拉取几百只股票时, Yahoo 会返回空行情. yfinance 把这种情况记成
+# possibly delisted, 但证券本身通常仍在交易. 缩小批次和线程数, 并重试整段缺失的代码.
+_CHUNK_SIZE = 40
+_DOWNLOAD_THREADS = 4
+_MAX_ATTEMPTS = 3
+_CHUNK_PAUSE_SECONDS = 1.0
+_RETRY_PAUSE_SECONDS = (2.0, 5.0)
+_DOWNLOAD_TIMEOUT = 30
 
 _COLUMN_MAP = {
     "Open": "open",
@@ -53,12 +63,14 @@ def get_prices(
         auto_adjust: 透传给 yfinance; True 时 yfinance 直接返回复权价并可能
             丢弃 Adj Close 列, False(默认)保留原始 close 与 adj_close 两列
         progress: 是否显示 yfinance 下载进度条, 默认 True, 仅限关键词传入
-            进度按处理完成的 ticker 数量推进, 包含失败任务, 不包括清洗和入库
+            证券较多时分批下载, 每批各有一条进度条
+            进度按该批已处理的 ticker 数量推进, 包含失败任务, 不包括清洗和入库
 
     Returns:
         [date, ticker] MultiIndex DataFrame, 按索引升序排序
         列为 open, high, low, close, adj_close, volume, 单位沿用 Yahoo 行情
         close 缺失的记录删除, 其他缺失字段保留缺失值
+        整段 close 都缺失时会降低并发再试, 仍没有则跳过该证券
         找不到数据时返回保留索引和列结构的空 DataFrame
 
     Raises:
@@ -79,41 +91,123 @@ def get_prices(
 
     import yfinance as yf
 
-    raw = yf.download(
-        ticker_list,
-        start=start,
-        end=end,
-        interval=interval,
-        auto_adjust=auto_adjust,
-        group_by="ticker",
-        progress=progress,
-        threads=True,
-    )
+    session = yf._http.new_session()
+    frames: list[pd.DataFrame] = []
+    pending = ticker_list
+    for attempt in range(1, _MAX_ATTEMPTS + 1):
+        if not pending:
+            break
+        threads: bool | int = _DOWNLOAD_THREADS if attempt == 1 else False
+        if attempt > 1:
+            pause = _RETRY_PAUSE_SECONDS[attempt - 2]
+            logger.warning(
+                f"{len(pending)} 个 ticker 没有可用 close, {pause:g}s 后进行第 "
+                f"{attempt} 次下载. Yahoo 限流时, yfinance 会把这些证券标成 "
+                "possibly delisted"
+            )
+            _pause(pause)
+        pending = _download_pending(
+            yf.download,
+            pending,
+            frames,
+            session=session,
+            start=start,
+            end=end,
+            interval=interval,
+            auto_adjust=auto_adjust,
+            progress=progress,
+            threads=threads,
+        )
 
-    if raw is None or raw.empty:
-        logger.warning("yfinance 未返回任何数据")
-        return _empty_frame()
-
-    frames = []
-    if isinstance(raw.columns, pd.MultiIndex):
-        # 多 ticker: 列是 (ticker, field) 两层
-        available = set(raw.columns.get_level_values(0))
-        for ticker in ticker_list:
-            if ticker not in available:
-                logger.warning(f"{ticker}: yfinance 无数据, 跳过")
-                continue
-            frames.append(_clean_single(raw[ticker].copy(), ticker, auto_adjust))  # type: ignore
-    else:
-        # 单 ticker: 列是单层
-        if len(ticker_list) != 1:
-            raise ValueError("多证券行情缺少 ticker 列层级, 无法确认证券身份")
-        frames.append(_clean_single(raw.copy(), ticker_list[0], auto_adjust))
-
+    if pending:
+        logger.warning(
+            f"以下 {len(pending)} 个 ticker 多次下载后仍没有 close, 已跳过: "
+            + ", ".join(pending)
+        )
     if not frames:
         return _empty_frame()
+    return to_date_ticker_frame(df=pd.concat(frames, ignore_index=True))
 
-    result = pd.concat(frames, ignore_index=True)
-    return to_date_ticker_frame(df=result)
+
+def _download_pending(
+    download: Callable[..., pd.DataFrame | None],
+    tickers: list[str],
+    frames: list[pd.DataFrame],
+    *,
+    session: object,
+    start: DateLike,
+    end: DateLike | None,
+    interval: str,
+    auto_adjust: bool,
+    progress: bool,
+    threads: bool | int,
+) -> list[str]:
+    """分批下载, 返回这一轮结束后仍然没有可用 close 的 ticker"""
+    failed: list[str] = []
+    for index, chunk in enumerate(_chunks(tickers, _CHUNK_SIZE)):
+        if index > 0:
+            _pause(_CHUNK_PAUSE_SECONDS)
+        raw = download(
+            chunk,
+            start=start,
+            end=end,
+            interval=interval,
+            auto_adjust=auto_adjust,
+            group_by="ticker",
+            progress=progress,
+            threads=threads,
+            timeout=_DOWNLOAD_TIMEOUT,
+            session=session,
+        )
+        ok, bad = _split_prices(raw, chunk, auto_adjust)
+        frames.extend(ok)
+        failed.extend(bad)
+    return failed
+
+
+def _chunks(items: Sequence[str], size: int) -> list[list[str]]:
+    return [list(items[index : index + size]) for index in range(0, len(items), size)]
+
+
+def _pause(seconds: float) -> None:
+    if seconds > 0:
+        time.sleep(seconds)
+
+
+def _split_prices(
+    raw: pd.DataFrame | None,
+    tickers: Sequence[str],
+    auto_adjust: bool,
+) -> tuple[list[pd.DataFrame], list[str]]:
+    """拆出有 close 的证券, 整段缺失的留给重试"""
+    if raw is None or raw.empty:
+        return [], list(tickers)
+
+    if isinstance(raw.columns, pd.MultiIndex):
+        columns = {
+            str(name).upper(): name
+            for name in dict.fromkeys(raw.columns.get_level_values(0))
+        }
+        frames: list[pd.DataFrame] = []
+        failed: list[str] = []
+        for ticker in tickers:
+            column = columns.get(ticker.upper())
+            if column is None:
+                failed.append(ticker)
+                continue
+            cleaned = _clean_single(raw[column].copy(), ticker, auto_adjust)  # type: ignore
+            if cleaned.empty:
+                failed.append(ticker)
+            else:
+                frames.append(cleaned)
+        return frames, failed
+
+    if len(tickers) != 1:
+        raise ValueError("多证券行情缺少 ticker 列层级, 无法确认证券身份")
+    cleaned = _clean_single(raw.copy(), tickers[0], auto_adjust)
+    if cleaned.empty:
+        return [], list(tickers)
+    return [cleaned], []
 
 
 def _clean_single(
@@ -141,7 +235,7 @@ def _clean_single(
     before = len(df)
     df = df.dropna(subset=["close"])
     dropped = before - len(df)
-    if dropped:
+    if dropped and not df.empty:
         logger.debug(f"{ticker}: 丢弃 {dropped} 行 close 缺失的记录")
 
     return df
