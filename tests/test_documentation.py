@@ -12,7 +12,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.mark.parametrize(
     "name",
-    ["returns", "volatility", "data-structure", "rebalance", "factors", "metrics"],
+    [
+        "returns",
+        "volatility",
+        "data-structure",
+        "rebalance",
+        "factors",
+        "metrics",
+        "sizing",
+    ],
 )
 def test_offline_documentation_examples(name):
     source = (ROOT / "docs" / f"{name}.md").read_text()
