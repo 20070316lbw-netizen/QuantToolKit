@@ -1,6 +1,6 @@
 # db
 
-提供 DuckDB 连接和事务写入, 支持最新标普500成员名单的 `universe` 表和日行情的 `prices` 表
+提供 DuckDB 连接和事务写入, 支持最新标普500成员名单的 `universe` 表, 日行情的 `prices` 表, 以及公司事实的 `period_facts` 和 `instant_facts` 表
 
 | 文件 | 接口 | 职责 |
 | --- | --- | --- |
@@ -20,6 +20,10 @@
 | `universe.sql` | 清空后按列名写入整份成员名单 |
 | `prices_ddl.sql` | 创建 `prices`, 主键为 `(ticker, date)` |
 | `prices.sql` | 按 `(ticker, date)` 新增或整行替换日行情 |
+| `period_facts_ddl.sql` | 创建 `period_facts`, 主键含期间起止日和申报编号 |
+| `period_facts.sql` | 按主键新增或整行替换期间事实 |
+| `instant_facts_ddl.sql` | 创建 `instant_facts`, 主键含时点日和申报编号 |
+| `instant_facts.sql` | 按主键新增或整行替换时点事实 |
 
 写入语句里的 `df` 指向 `operation_sql` 的同名参数
 DuckDB 只在执行 `execute` 的函数里查找这个名字, 所以 DataFrame 必须传给 `operation_sql`, 不能只放在调用方的局部变量里
@@ -164,6 +168,41 @@ with duckdb.connect(":memory:") as connection:
 
 print(written, updated, rows)  # 1 1 [('AAPL', 188.0)]
 ```
+
+## 写入公司事实
+
+`period_facts` 保存带开始日的事实, 如收入, 净利润, 经营现金流
+`instant_facts` 保存只有结束日的事实, 如资产, 股东权益, 流通股数
+两表列相同, 时点表没有 `period_start`
+`cik` 为10位字符串, 与 `universe.cik` 对应, 证券代码查询时再连接 `universe`
+
+| 字段 | 数据库类型 | 内容 |
+| --- | --- | --- |
+| `cik` | VARCHAR | 10位 SEC 公司标识 |
+| `taxonomy` | VARCHAR | 准则词典, 如 `us-gaap`, `ifrs-full`, `dei` |
+| `concept` | VARCHAR | 词典中的科目名 |
+| `unit` | VARCHAR | 单位, 如 `USD`, `USD/shares`, `shares` |
+| `period_start` | DATE | 期间开始日, 仅 `period_facts` |
+| `period_end` | DATE | 结束日 |
+| `val` | DOUBLE | 数值, 金额为原始单位 |
+| `accn` | VARCHAR | 申报编号 |
+| `form` | VARCHAR | 申报类型, 如 `10-K`, `10-Q`, `20-F` |
+| `filed` | DATE | 申报日 |
+| `fy` | INTEGER | 申报所属财年, 比较期沿用这份申报的值, 可空 |
+| `fp` | VARCHAR | 申报所属期间, 可空 |
+| `frame` | VARCHAR | SEC 日历框, 如 `CY2025`, `CY2025Q3`, `CY2025Q4I`, 可空 |
+
+先入库 `universe`, 并按 [sources 获取方法](../sources/USAGE.md) 放好 `data/companyfacts.zip`
+从仓库根目录运行:
+
+```bash
+uv run python scripts/ingest_companyfacts.py
+```
+
+脚本只读取 `universe` 中的 CIK, 写入这些公司 JSON 里的全部标准分类事实
+公司自建标签不在压缩包中
+同一主键整行替换, 新的申报编号另存一行
+每批公司单独提交, 中断后重跑会补齐已处理的主键
 
 ## 本地检查
 

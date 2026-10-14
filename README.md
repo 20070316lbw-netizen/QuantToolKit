@@ -19,7 +19,7 @@ uv add "quanttoolkit @ git+https://github.com/20070316lbw-netizen/QuantToolKit.g
 | 模块 | 内容 | 状态 |
 | --- | --- | --- |
 | [db](src/quanttoolkit/db/README.md) | DuckDB 连接, `sql` 目录中的建表与事务写入 | 已实现 |
-| [sources](src/quanttoolkit/sources/USAGE.md) | 最新标普500成员抓取, SEC 公司名称映射, Yahoo 行情下载 | 已实现 |
+| [sources](src/quanttoolkit/sources/USAGE.md) | 标普500成员, SEC 公司事实, Yahoo 行情下载 | 已实现 |
 | [transfer](src/quanttoolkit/transfer.py) | 时序长表转为 `[date, ticker]` MultiIndex DataFrame | 已实现 |
 | [returns](docs/returns.md) | 历史与未来简单收益率, 单期对数收益率 | 已实现 |
 | [volatility](docs/volatility.md) | 历史与未来简单收益波动率 | 已实现 |

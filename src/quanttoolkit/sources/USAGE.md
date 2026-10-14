@@ -6,6 +6,21 @@ curl -H "User-Agent: 你的名字 你的邮箱" \
   https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip
 ```
 
+成员名单入库后, 从仓库根目录运行:
+
+```bash
+uv run python scripts/ingest_companyfacts.py
+```
+
+脚本读取 `universe` 的 CIK, 将带 `start` 的事实写入 `period_facts`, 其余写入 `instant_facts`
+读取单批公司时:
+
+```python
+from quanttoolkit.sources.companyfacts import read_company_facts
+
+period, instant = read_company_facts("data/companyfacts.zip", ["0000320193"])
+```
+
 
 ## 官方映射表获取方法
 
