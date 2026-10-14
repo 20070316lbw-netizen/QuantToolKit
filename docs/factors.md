@@ -110,3 +110,53 @@ assert factor.iloc[:2].isna().all()
 assert factor.iloc[2] == 50.0
 assert factor.iloc[3] == 75.0
 ```
+
+## 截面标准化
+
+[`zscore_by_date`](../src/quanttoolkit/factors/zscore.py) 把因子面板的每一列变成当天截面上的 z-score
+`z = (原始值 - 当天均值) / 当天样本标准差`, 标准差 `ddof=1`
+缺失值不进入当天的均值和标准差
+当天该列有效值少于 2 个, 或标准差为 0 时, 结果为 NaN
+不修改输入
+
+```python
+import pandas as pd
+
+from quanttoolkit.factors.zscore import zscore_by_date
+
+index = pd.MultiIndex.from_product(
+    [pd.to_datetime(["2024-01-01"]), ["A", "B", "C"]],
+    names=["date", "ticker"],
+)
+factors = pd.DataFrame({"f1": [1.0, 2.0, 3.0]}, index=index)
+assert zscore_by_date(factors)["f1"].tolist() == [-1.0, 0.0, 1.0]
+```
+
+## 加权合成
+
+[`combine_scores`](../src/quanttoolkit/factors/combine.py) 把已经标准化的因子列合成名为 `score` 的 Series
+某一行缺失的因子不参与该行
+分子是权重乘因子后求和, 分母是参与因子的权重绝对值之和
+权重不必事先加总为 1, 负数权重用来反转因子方向
+未传入权重时每一列权重为 1
+不修改输入
+
+```python
+import pandas as pd
+
+from quanttoolkit.factors.combine import combine_scores
+
+index = pd.MultiIndex.from_product(
+    [pd.to_datetime(["2024-01-01"]), ["A", "B", "C"]],
+    names=["date", "ticker"],
+)
+z = pd.DataFrame(
+    {"f1": [-1.0, 0.0, 1.0], "f2": [-0.71, float("nan"), 0.71]},
+    index=index,
+)
+score = combine_scores(z, {"f1": 0.25, "f2": -0.25})
+assert score.name == "score"
+assert round(float(score.iloc[0]), 3) == -0.145
+assert score.iloc[1] == 0.0
+assert round(float(score.iloc[2]), 3) == 0.145
+```
