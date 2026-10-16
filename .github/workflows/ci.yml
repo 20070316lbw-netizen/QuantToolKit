@@ -12,9 +12,6 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v7
 
@@ -47,16 +44,6 @@ jobs:
             coverage.xml
             htmlcov/
           if-no-files-found: error
-
-      - name: Upload coverage to Codecov
-        # Coverage service availability must not block lint, tests or package build.
-        continue-on-error: true
-        uses: codecov/codecov-action@v7
-        with:
-          use_oidc: true
-          files: coverage.xml
-          disable_search: true
-          fail_ci_if_error: true
 
       - name: Build package
         run: uv build

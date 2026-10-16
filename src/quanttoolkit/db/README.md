@@ -236,5 +236,4 @@ uv run ruff format --check src/quanttoolkit/db/operation.py scripts/ingest_unive
 
 测试覆盖文件持久化, 完整替换名单, 行情更新与追加, 重复写入, SQL NULL,
 空输入, 主键及非空约束, 日内时间转换, 只读写入拒绝和事务失败后的回滚
-GitHub Actions 生成 XML, HTML 和运行摘要中的覆盖率报告, 上传报告供下载并发送给 Codecov
-首页 Coverage 徽章显示 Codecov 收到的 main 分支覆盖率
+GitHub Actions 生成 XML, HTML 和运行摘要中的覆盖率报告, 并上传报告供下载

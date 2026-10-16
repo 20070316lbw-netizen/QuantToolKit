@@ -2,7 +2,6 @@
 
 
 [![CI](https://github.com/20070316lbw-netizen/QuantToolKit/actions/workflows/ci.yml/badge.svg)](https://github.com/20070316lbw-netizen/QuantToolKit/actions/workflows/ci.yml)
-[![Coverage](https://codecov.io/gh/20070316lbw-netizen/QuantToolKit/branch/main/graph/badge.svg)](https://codecov.io/gh/20070316lbw-netizen/QuantToolKit)
 [![Python](https://img.shields.io/badge/python-%E2%89%A53.12-blue?logo=python&logoColor=white)](pyproject.toml)
 [![License](https://img.shields.io/github/license/20070316lbw-netizen/QuantToolKit)](LICENSE)
 [![Ruff](https://img.shields.io/badge/lint%20%26%20format-Ruff-D7FF64?logo=ruff&logoColor=white)](https://docs.astral.sh/ruff/)
