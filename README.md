@@ -7,6 +7,8 @@
 [![Ruff](https://img.shields.io/badge/lint%20%26%20format-Ruff-D7FF64?logo=ruff&logoColor=white)](https://docs.astral.sh/ruff/)
 [![Last commit](https://img.shields.io/github/last-commit/20070316lbw-netizen/QuantToolKit)](https://github.com/20070316lbw-netizen/QuantToolKit/commits/main/)
 
+交互导览: 下载仓库后, 用浏览器打开 [docs/explorer.html](docs/explorer.html), 可探索模块与计算窗口, 无需安装前端依赖。
+
 仓库版本的安装方式：
 
 ```bash

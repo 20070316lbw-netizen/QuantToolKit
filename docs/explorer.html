@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>QuantToolKit · 可交互的项目说明</title>
+<style>
+  :root { color-scheme: light; --paper:#f6f5f0; --surface:#fffefa; --ink:#252b29; --muted:#69706b; --line:#dddfd5; --accent:#b74b2e; --soft:#f5e6dc; --green:#376752; --green-soft:#e5ede4; --grid:#e5e7df; --code:#232c28; --code-ink:#e5ebdf; }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; scroll-padding-top:85px; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  button,input,select { font:inherit; }
+  button,a,input { -webkit-tap-highlight-color:transparent; }
+  button { cursor:pointer; }
+  a { color:inherit; text-underline-offset:4px; }
+  button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible { outline:3px solid var(--accent); outline-offset:4px; }
+  button { color:inherit; }
+  .mono,code,pre,output { font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; }
+  .wrap { max-width:1200px; margin:auto; padding:0 40px; }
+  header { position:sticky; top:0; z-index:10; background:var(--paper); border-bottom:1px solid var(--line); }
+  .header-row { min-height:73px; display:flex; align-items:center; justify-content:space-between; gap:24px; }
+  .brand { display:flex; align-items:center; gap:12px; text-decoration:none; font-weight:650; letter-spacing:-.4px; font-size:18px; }
+  .brand-mark { width:29px; height:29px; display:grid; place-items:center; color:var(--surface); background:var(--green); border-radius:7px; font:18px Georgia,serif; }
+  nav { display:flex; gap:25px; align-items:center; font-size:13px; }
+  nav a { text-decoration:none; color:var(--muted); }
+  nav a:hover { color:var(--accent); }
+  .edition { color:var(--muted); font-size:11px; letter-spacing:1px; }
+  .hero { padding:72px 0 55px; display:grid; grid-template-columns:1.1fr 1fr; gap:65px; align-items:center; }
+  .eyebrow { display:flex; align-items:center; gap:9px; color:var(--green); font-size:11px; letter-spacing:1.5px; font-weight:600; }
+  .dot { width:6px; height:6px; border-radius:50%; background:var(--green); display:inline-block; }
+  h1 { font-size:clamp(36px,4.8vw,60px); font-weight:550; line-height:1.25; letter-spacing:-2.5px; margin:22px 0; }
+  h1 span { color:var(--accent); }
+  .intro { color:var(--muted); max-width:430px; font-size:15px; }
+  .hero-actions { display:flex; flex-wrap:wrap; align-items:center; gap:22px; margin-top:27px; }
+  .primary { background:var(--ink); color:var(--paper); padding:10px 18px; border-radius:5px; text-decoration:none; font-size:13px; border:0; }
+  .text-link { font-size:13px; }
+  .specimen { background:var(--surface); border:1px solid var(--line); border-radius:9px; overflow:hidden; box-shadow:0 10px 35px #25302406; transform:rotate(-1deg); }
+  .spec-head { border-bottom:1px solid var(--line); padding:12px 20px; display:flex; justify-content:space-between; font-size:11px; color:var(--muted); }
+  .spec-body { padding:20px 25px; }
+  .spec-label { font-size:11px; color:var(--muted); }
+  .spec-body pre { font-size:12px; line-height:2; margin:12px 0; overflow-x:auto; }
+  .spec-body .em { color:var(--accent); }
+  .spec-foot { display:flex; gap:9px; margin-top:19px; align-items:center; color:var(--green); font-size:11px; }
+  .section { border-top:1px solid var(--line); padding:36px 0 43px; }
+  .section-top { display:flex; justify-content:space-between; align-items:baseline; gap:20px; margin-bottom:22px; }
+  .section-heading { display:flex; align-items:baseline; gap:13px; }
+  .section-no { font-size:11px; color:var(--accent); }
+  h2 { font-size:22px; margin:0; font-weight:550; letter-spacing:-.6px; }
+  .section-note { margin:0; color:var(--muted); font-size:12px; }
+  .pipeline { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; }
+  .stage { text-align:left; position:relative; background:transparent; border:1px solid var(--line); border-radius:5px; padding:15px 14px; min-height:94px; transition:background .15s,border-color .15s; }
+  .stage:not(:last-child)::after { content:'→'; position:absolute; right:-10px; top:31px; z-index:1; color:var(--muted); background:var(--paper); font-size:13px; }
+  .stage[aria-pressed="true"] { background:var(--green-soft); border-color:var(--green); }
+  .stage small { display:block; color:var(--muted); font-size:10px; letter-spacing:.5px; }
+  .stage strong { display:block; margin:6px 0 0; font-size:14px; font-weight:550; }
+  .stage-detail { display:grid; grid-template-columns:1fr 1fr; gap:28px; margin-top:18px; padding:22px 25px; background:var(--surface); border:1px solid var(--line); border-radius:5px; min-height:145px; }
+  .stage-title { margin:0 0 7px; font-size:16px; font-weight:550; }
+  .stage-description { font-size:13px; color:var(--muted); margin:0; }
+  .stage-api { margin:0 0 10px; font-size:12px; overflow-wrap:anywhere; }
+  .stage-links { font-size:12px; display:flex; gap:20px; }
+  .lab { border:1px solid var(--line); border-radius:8px; background:var(--surface); overflow:hidden; }
+  .lab-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:17px 22px; border-bottom:1px solid var(--line); }
+  .lab-toolbar strong { font-size:13px; font-weight:550; }
+  .lab-toolbar span { color:var(--muted); font-size:11px; }
+  .lab-layout { display:grid; grid-template-columns:235px minmax(0,1fr); }
+  .controls { padding:22px; border-right:1px solid var(--line); background:var(--paper); }
+  .control-caption { font-size:11px; color:var(--muted); margin:0 0 10px; }
+  .mode-buttons { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-bottom:24px; }
+  .mode { padding:8px 4px; font-size:12px; border:1px solid var(--line); border-radius:4px; background:var(--surface); }
+  .mode[aria-pressed="true"] { border-color:var(--ink); background:var(--ink); color:var(--paper); }
+  .field { margin:18px 0; }
+  .field-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; font-size:12px; }
+  .field-head output { color:var(--accent); font-size:13px; }
+  input[type="range"] { width:100%; accent-color:var(--accent); margin:7px 0; cursor:ew-resize; }
+  input[type="checkbox"] { accent-color:var(--accent); width:15px; height:15px; flex-shrink:0; }
+  .check { font-size:12px; display:flex; gap:8px; align-items:flex-start; margin-top:22px; }
+  .control-help { font-size:11px; color:var(--muted); margin:7px 0 0; }
+  .reset { border:0; background:transparent; padding:0; font-size:11px; color:var(--muted); text-decoration:underline; text-underline-offset:4px; margin-top:18px; }
+  .lab-content { min-width:0; padding:23px 27px; }
+  .plot-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .legend { display:flex; gap:13px; flex-wrap:wrap; font-size:10px; color:var(--muted); }
+  .legend i { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px; background:var(--muted); }
+  .legend .selected { background:var(--accent); }
+  .legend .anchor { background:var(--green); }
+  #chart { width:100%; height:250px; display:block; margin-top:8px; }
+  .record-picker { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:3px; margin:0 0 14px; }
+  .record { font-size:10px; padding:5px 0; border:0; border-radius:3px; background:transparent; color:var(--muted); }
+  .record[aria-pressed="true"] { color:var(--surface); background:var(--green); }
+  .interval-caption { font-size:12px; padding:10px 12px; background:var(--paper); border-left:2px solid var(--accent); margin-bottom:20px; }
+  .result-row { display:flex; align-items:center; justify-content:space-between; gap:20px; }
+  .result-value { font-size:35px; font-weight:500; line-height:1.25; letter-spacing:-1.5px; color:var(--accent); }
+  .result-label { font-size:11px; color:var(--muted); margin-top:5px; }
+  .formula { font-size:12px; text-align:right; overflow-wrap:anywhere; max-width:65%; }
+  .formula small { display:block; color:var(--muted); margin-top:5px; font-family:inherit; }
+  .code-box { margin-top:22px; border-radius:5px; overflow:hidden; background:var(--code); color:var(--code-ink); }
+  .code-head { display:flex; justify-content:space-between; gap:12px; padding:10px 15px; border-bottom:1px solid #ffffff18; font-size:10px; color:#bdc8bb; }
+  .copy { padding:0 3px; border:0; background:transparent; color:inherit; font-size:11px; }
+  .code-box pre { font-size:11px; line-height:1.8; margin:0; padding:14px 15px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .lab-note { margin:17px 0 0; color:var(--muted); font-size:11px; }
+  .recipes { display:grid; grid-template-columns:repeat(3,1fr); gap:17px; }
+  .recipe { border:1px solid var(--line); background:transparent; border-radius:5px; text-align:left; padding:20px; }
+  .recipe:hover { background:var(--surface); border-color:var(--muted); }
+  .recipe small { font-size:10px; color:var(--accent); letter-spacing:1px; }
+  .recipe strong { display:block; font-size:15px; font-weight:550; margin:9px 0 6px; }
+  .recipe span { color:var(--muted); font-size:12px; display:block; }
+  .docs-grid { display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid var(--line); }
+  .doc-link { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 0; margin-right:30px; border-bottom:1px solid var(--line); text-decoration:none; font-size:13px; }
+  .doc-link span { font-size:11px; color:var(--muted); }
+  .install { margin-top:25px; display:flex; gap:22px; align-items:center; flex-wrap:wrap; }
+  .install pre { margin:0; font-size:11px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  footer { border-top:1px solid var(--line); padding:23px 0 35px; color:var(--muted); font-size:11px; }
+  .footer-row { display:flex; justify-content:space-between; gap:15px; flex-wrap:wrap; }
+  .theme-button { border:0; padding:0; color:var(--muted); background:transparent; font-size:11px; }
+  [data-theme="dark"] { color-scheme:dark; --paper:#1d2420; --surface:#242d27; --ink:#e5e8de; --muted:#a8b2a7; --line:#3c473e; --accent:#eda184; --soft:#4a342b; --green:#a4c1a0; --green-soft:#334334; --grid:#374239; --code:#151c17; --code-ink:#e5ebdf; }
+  @media(prefers-color-scheme:dark) { :root:not([data-theme="light"]) { color-scheme:dark; --paper:#1d2420; --surface:#242d27; --ink:#e5e8de; --muted:#a8b2a7; --line:#3c473e; --accent:#eda184; --soft:#4a342b; --green:#a4c1a0; --green-soft:#334334; --grid:#374239; --code:#151c17; --code-ink:#e5ebdf; } }
+  @media(max-width:900px) { .hero { gap:28px; } .wrap { padding:0 25px; } .edition { display:none; } .pipeline { grid-template-columns:repeat(3,1fr); } .stage:nth-child(3)::after { display:none; } .lab-layout { grid-template-columns:205px minmax(0,1fr); } .lab-content { padding:20px; } .controls { padding:18px; } .legend { gap:8px; } }
+  @media(max-width:650px) { .wrap { padding:0 18px; } .header-row { min-height:65px; gap:12px; flex-wrap:wrap; padding-top:10px; padding-bottom:10px; } .brand { font-size:16px; } nav { gap:16px; font-size:12px; } .hero { padding:40px 0 32px; grid-template-columns:1fr; gap:30px; } h1 { letter-spacing:-1.5px; } .specimen { transform:none; } .section-top { display:block; } .section-note { margin-top:7px; } .stage { padding:12px; min-height:80px; } .stage-detail { grid-template-columns:1fr; gap:15px; padding:18px; } .lab-layout { grid-template-columns:1fr; } .controls { border-right:0; border-bottom:1px solid var(--line); display:grid; grid-template-columns:1fr 1fr; gap:0 20px; } .mode-field { grid-column:1/-1; } .mode-buttons { grid-template-columns:repeat(3,1fr); margin-bottom:5px; } .field { margin:8px 0; } .check { grid-column:1/-1; margin-top:12px; } .control-help,.reset { grid-column:1/-1; } .lab-content { padding:18px 14px; } .lab-toolbar { padding:13px 15px; } .lab-toolbar span { font-size:10px; } .plot-heading { flex-wrap:wrap; gap:6px; } .recipes { grid-template-columns:1fr; gap:10px; } .recipe { padding:16px 19px; } .docs-grid { grid-template-columns:1fr 1fr; } .doc-link { margin-right:12px; } .result-value { font-size:29px; } .formula { font-size:11px; } .record { min-height:32px; } #chart { height:225px; } }
+  @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } * { transition:none!important; } }
+</style>
+</head>
+<body>
+<header><div class="wrap header-row">
+  <a class="brand" href="#"><span class="brand-mark" aria-hidden="true">q</span>QuantToolKit</a>
+  <nav aria-label="主导航"><a href="#pipeline">项目地图</a><a href="#lab">计算实验室</a><a href="#docs">文档</a></nav>
+  <span class="edition mono">AN INTERACTIVE README</span>
+</div></header>
+<main class="wrap">
+  <section class="hero" aria-labelledby="hero-title">
+    <div><div class="eyebrow"><span class="dot"></span> A SMALL TOOLKIT FOR QUANT RESEARCH</div>
+    <h1 id="hero-title">让数据走一遍。<br><span>让计算看得见。</span></h1>
+    <p class="intro">从一张行情表到一个因子。用可交互的项目说明, 看清 QuantToolKit 的模块、数据约定和每一个计算窗口。</p>
+    <div class="hero-actions"><a class="primary" href="#lab">动手调一个窗口 ↗</a><a class="text-link" href="../README.md">阅读 README</a></div></div>
+    <div class="specimen" aria-label="项目数据约定示例"><div class="spec-head mono"><span>THE SHAPE OF DATA</span><span>01 / PANEL</span></div>
+      <div class="spec-body"><div class="spec-label">统一的索引, 贯穿计算。</div><pre>                    <span class="em">adj_close</span>
+date        ticker
+2024-01-02  A          100.00
+2024-01-03  A          110.00
+2024-01-04  A           99.00
+2024-01-05  A          118.80</pre>
+      <div class="spec-foot"><span class="dot"></span><span class="mono">[date, ticker] → named pd.Series</span></div></div>
+    </div>
+  </section>
+  <section class="section" id="pipeline" aria-labelledby="map-title">
+    <div class="section-top"><div class="section-heading"><span class="section-no mono">01</span><h2 id="map-title">一条研究路径</h2></div><p class="section-note">点开一个模块, 看它接收什么、产出什么。</p></div>
+    <div class="pipeline" aria-label="模块选择">
+      <button class="stage" data-stage="sources" aria-pressed="false"><small class="mono">01 / SOURCES</small><strong>获取数据</strong></button>
+      <button class="stage" data-stage="db" aria-pressed="false"><small class="mono">02 / STORAGE</small><strong>存入 DuckDB</strong></button>
+      <button class="stage" data-stage="transfer" aria-pressed="true"><small class="mono">03 / PANEL</small><strong>统一数据结构</strong></button>
+      <button class="stage" data-stage="factors" aria-pressed="false"><small class="mono">04 / FACTORS</small><strong>计算因子</strong></button>
+      <button class="stage" data-stage="sizing" aria-pressed="false"><small class="mono">05 / WEIGHTS</small><strong>构造仓位</strong></button>
+      <button class="stage" data-stage="metrics" aria-pressed="false"><small class="mono">06 / EVALUATE</small><strong>评估结果</strong></button>
+    </div>
+    <div class="stage-detail" aria-live="polite"><div><h3 class="stage-title" id="stage-title"></h3><p class="stage-description" id="stage-description"></p></div><div><p class="stage-api mono" id="stage-api"></p><div class="stage-links"><a id="stage-doc" href="data-structure.md">阅读说明 ↗</a><a id="stage-source" href="../src/quanttoolkit/transfer.py">查看源码 ↗</a></div></div></div>
+  </section>
+  <section class="section" id="lab" aria-labelledby="lab-title">
+    <div class="section-top"><div class="section-heading"><span class="section-no mono">02</span><h2 id="lab-title">把时间窗口摊开</h2></div><p class="section-note">拖动参数, 或点击图下的记录编号切换基准日。</p></div>
+    <div class="lab">
+      <div class="lab-toolbar"><strong>一只虚拟证券 A 的 12 条价格记录</strong><span class="mono">SYNTHETIC DATA · OFFLINE</span></div>
+      <div class="lab-layout">
+        <aside class="controls" aria-label="计算参数">
+          <div class="mode-field"><p class="control-caption">你想计算什么?</p><div class="mode-buttons" aria-label="计算类型">
+            <button class="mode" data-mode="historical" aria-pressed="false">历史收益</button><button class="mode" data-mode="future" aria-pressed="true">未来收益</button>
+            <button class="mode" data-mode="historyVol" aria-pressed="false">历史波动</button><button class="mode" data-mode="forwardVol" aria-pressed="false">未来波动</button>
+            <button class="mode" data-mode="momentum" aria-pressed="false">动量因子</button><button class="mode" data-mode="reversal" aria-pressed="false">反转因子</button>
+          </div></div>
+          <div class="field"><div class="field-head"><label for="anchor">基准记录 t</label><output id="anchor-value" for="anchor">5</output></div><input id="anchor" type="range" min="0" max="11" value="5" step="1"></div>
+          <div class="field"><div class="field-head"><label for="window">窗口期数</label><output id="window-value" for="window">3</output></div><input id="window" type="range" min="2" max="5" value="3" step="1"></div>
+          <div class="field" id="offset-field"><div class="field-head"><label for="offset" id="offset-label">入场间隔 gap</label><output id="offset-value" for="offset">1</output></div><input id="offset" type="range" min="0" max="3" value="1" step="1"></div>
+          <label class="check"><input type="checkbox" id="missing"><span>把记录 8 的价格设为缺失</span></label>
+          <p class="control-help">原始样例价格为 117.61, 开关设为 NaN。</p>
+          <button class="reset" id="reset">恢复初始实验</button>
+        </aside>
+        <div class="lab-content">
+          <div class="plot-heading"><span class="control-caption" style="margin:0">复权价格 / 样例单位</span><div class="legend"><span><i class="anchor"></i>基准 t</span><span><i class="selected"></i>计算区间</span><span><i></i>其他记录</span></div></div>
+          <svg id="chart" role="img" aria-label="样例价格及当前计算区间"></svg>
+          <div id="record-picker" class="record-picker" aria-label="选择基准记录"></div>
+          <div class="interval-caption" id="interval-caption"></div>
+          <div class="result-row" aria-live="polite" aria-atomic="true"><div><div class="result-value mono" id="result-value"></div><div class="result-label" id="result-label"></div></div><div class="formula mono" id="formula"></div></div>
+          <div class="code-box"><div class="code-head mono"><span>PYTHON · 与仓库接口对应</span><button class="copy" id="copy">复制完整示例</button></div><pre><code id="code"></code></pre></div>
+          <p class="lab-note" id="lab-note"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="section" aria-labelledby="recipe-title">
+    <div class="section-top"><div class="section-heading"><span class="section-no mono">03</span><h2 id="recipe-title">三个值得试试的瞬间</h2></div><p class="section-note">点一个场景, 把问题带进实验室。</p></div>
+    <div class="recipes">
+      <button class="recipe" data-preset="gap"><small class="mono">TRY / 01</small><strong>跳过一天, 跳过了什么? ↗</strong><span>从 gap=0 开始, 再调到 1。看入场价格和整个区间一起后移。</span></button>
+      <button class="recipe" data-preset="missing"><small class="mono">TRY / 02</small><strong>中间少一个价格, 还能算吗? ↗</strong><span>切换未来收益和未来波动。相同的缺失价格, 会得到不同结果。</span></button>
+      <button class="recipe" data-preset="edge"><small class="mono">TRY / 03</small><strong>未来还没有发生 ↗</strong><span>把基准日放在最后一条记录。为什么标签是 NaN?</span></button>
+    </div>
+  </section>
+  <section class="section" id="docs" aria-labelledby="docs-title">
+    <div class="section-top"><div class="section-heading"><span class="section-no mono">04</span><h2 id="docs-title">继续读, 也继续算</h2></div><p class="section-note">精确口径与更多用法, 回到项目文档。</p></div>
+    <div class="docs-grid">
+      <a class="doc-link" href="data-structure.md">数据约定 <span>INDEX ↗</span></a><a class="doc-link" href="returns.md">收益率 <span>RETURNS ↗</span></a><a class="doc-link" href="volatility.md">波动率 <span>VOLATILITY ↗</span></a>
+      <a class="doc-link" href="factors.md">基础因子 <span>FACTORS ↗</span></a><a class="doc-link" href="rebalance.md">调仓日历 <span>REBALANCE ↗</span></a><a class="doc-link" href="sizing.md">分位仓位 <span>WEIGHTS ↗</span></a>
+      <a class="doc-link" href="metrics.md">评定指标 <span>METRICS ↗</span></a><a class="doc-link" href="../src/quanttoolkit/sources/USAGE.md">数据源 <span>SOURCES ↗</span></a><a class="doc-link" href="../src/quanttoolkit/db/README.md">数据库 <span>DUCKDB ↗</span></a>
+    </div>
+    <div class="install"><span class="section-note">安装仓库版本</span><pre>uv add "quanttoolkit @ git+https://github.com/20070316lbw-netizen/QuantToolKit.git"</pre></div>
+  </section>
+</main>
+<footer><div class="wrap footer-row"><span>QuantToolKit · 一份可以动手玩的项目说明 · MIT</span><span>所有价格均为教学样例 <span aria-hidden="true">/</span> <button class="theme-button" id="theme">切换明暗</button></span></div></footer>
+<noscript><p class="wrap">请启用 JavaScript 使用实验室。你也可以直接阅读 <a href="../README.md">README</a>。</p></noscript>
+<script id="calculator">
+  const samplePrices = [100, 110, 99, 118.8, 118.8, 130.68, 124.15, 136.56, 117.61, 129.37, 125.49, 140.55];
+  function calculate(prices, mode, t, window, offset) {
+    const future = mode === 'future' || mode === 'forwardVol';
+    const factor = mode === 'momentum' || mode === 'reversal';
+    const volatility = mode === 'historyVol' || mode === 'forwardVol';
+    const end = future ? t + offset + window : factor ? t - offset : t;
+    const start = end - window;
+    if (start < 0 || end >= prices.length) return { start, end, value:NaN, reason:'bounds' };
+    const slice = prices.slice(start, end + 1);
+    const needed = volatility || factor ? slice : [prices[start], prices[end]];
+    if (needed.some(p => p === null || !Number.isFinite(p))) return { start, end, value:NaN, reason:'missing' };
+    const returns = slice.slice(1).map((p, i) => p / slice[i] - 1);
+    let value;
+    if (volatility) {
+      const mean = returns.reduce((sum, r) => sum + r, 0) / window;
+      value = Math.sqrt(returns.reduce((sum, r) => sum + (r - mean) ** 2, 0) / (window - 1));
+    } else if (factor) {
+      value = Math.log(prices[end] / prices[start]) * (mode === 'reversal' ? -1 : 1);
+    } else value = prices[end] / prices[start] - 1;
+    return { start, end, value, reason:null };
+  }
+  globalThis.qtkCalculator = { calculate, samplePrices };
+</script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const modes = {
+    historical:{ name:'历史简单收益率', fn:'historical_return', module:'returns', future:false, factor:false },
+    future:{ name:'未来简单收益率', fn:'future_returns', module:'returns', future:true, factor:false },
+    historyVol:{ name:'历史样本波动率', fn:'history_vol', module:'volatility', future:false, factor:false },
+    forwardVol:{ name:'未来样本波动率', fn:'forward_volatility', module:'volatility', future:true, factor:false },
+    momentum:{ name:'累计对数动量', fn:'base_momfactor', module:'factors.mom_base', future:false, factor:true },
+    reversal:{ name:'累计对数反转', fn:'base_reversalfactor', module:'factors.reversal_base', future:false, factor:true }
+  };
+  const stages = {
+    sources:['从外部世界获取数据', '标普500成员、Kenneth French 因子和 Yahoo 行情。时序数据整理成统一面板, 静态成员表保留普通列。', '外部数据 → 时序面板 / 静态成员表', '../src/quanttoolkit/sources/USAGE.md', '../src/quanttoolkit/sources/yahoo.py'],
+    db:['用 DuckDB 留下可复用的数据', '通过 SQL 定义表结构, 以事务写入数据。计算面板入库前, 用 reset_index() 把索引还原成列。', '普通列 DataFrame → DuckDB 表', '../src/quanttoolkit/db/README.md', '../src/quanttoolkit/db/operation.py'],
+    transfer:['把行情放进同一种结构', '将日期转为时间类型, 设置并排序 [date, ticker] 索引。每只证券独立计算, 单结果以命名 Series 返回。', 'to_date_ticker_frame(df=raw.copy())', 'data-structure.md', '../src/quanttoolkit/transfer.py'],
+    factors:['从历史价格提取信号', '动量、反转、对数波动率和 RSI。随后可按日期做截面 z-score, 再将多个因子加权合成为 score。', '价格面板 → 因子 Series → 标准化与合成', 'factors.md', '../src/quanttoolkit/factors/mom_base.py'],
+    sizing:['将截面分数转成多空权重', '调仓日单独分组, 最高分位等权做多, 最低分位等权做空。多头权重和为 1, 空头权重和为 -1。', 'simple_quantile_long_short(score=score, n_quantiles=5)', 'sizing.md', '../src/quanttoolkit/sizing.py'],
+    metrics:['评估信号, 或评估收益序列', '因子与未来收益对齐后计算 IC / Rank IC。总收益、夏普和回撤则接收已有收益序列, 组合收益需由调用方构造。', '因子 + 标签 → IC; 收益序列 → 评定指标', 'metrics.md', '../src/quanttoolkit/metrics.py']
+  };
+  let state = { mode:'future', t:5, window:3, offset:1, missing:false };
+  let currentResult;
+  let completeCode = '';
+  function selectStage(key) {
+    const [title, description, api, doc, source] = stages[key];
+    $('stage-title').textContent = title; $('stage-description').textContent = description; $('stage-api').textContent = api;
+    $('stage-doc').href = doc; $('stage-source').href = source;
+    document.querySelectorAll('[data-stage]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.stage === key)));
+  }
+  document.querySelectorAll('[data-stage]').forEach(b => b.addEventListener('click', () => selectStage(b.dataset.stage)));
+  function priceData() { return samplePrices.map((p, i) => state.missing && i === 8 ? null : p); }
+  function chart() {
+    const svg = $('chart'), width = svg.getBoundingClientRect().width;
+    if (!width || !currentResult) return;
+    const height = svg.getBoundingClientRect().height, left = 36, right = 18, top = 29, bottom = height - 35;
+    const x = i => left + (width - left - right) * i / 11;
+    const data = priceData(), finite = data.filter(p => p !== null);
+    const low = Math.floor(Math.min(...finite) / 10) * 10 - 5, high = Math.ceil(Math.max(...finite) / 10) * 10 + 5;
+    const y = p => bottom - (p - low) / (high - low) * (bottom - top);
+    const { start, end } = currentResult;
+    const visibleStart = Math.max(0, start), visibleEnd = Math.min(11, end);
+    let markup = '<title>样例复权价格与所选窗口</title><desc>橙色表示计算区间, 绿色虚线为基准记录。下方按钮可选择基准记录。</desc>';
+    if (visibleStart <= visibleEnd) markup += `<rect x="${x(visibleStart)}" y="${top - 5}" width="${Math.max(1, x(visibleEnd) - x(visibleStart))}" height="${bottom - top + 10}" fill="var(--soft)"/>`;
+    [100, 120, 140].forEach(p => { markup += `<line x1="${left}" x2="${width - right}" y1="${y(p)}" y2="${y(p)}" stroke="var(--grid)"/><text x="${left - 8}" y="${y(p) + 4}" text-anchor="end" fill="var(--muted)" font-size="10">${p}</text>`; });
+    markup += `<line x1="${x(state.t)}" x2="${x(state.t)}" y1="${top - 10}" y2="${bottom + 5}" stroke="var(--green)" stroke-dasharray="4 4"/><text x="${x(state.t)}" y="${top - 16}" text-anchor="middle" fill="var(--green)" font-size="11">t=${state.t}</text>`;
+    data.forEach((p, i) => {
+      if (i && p !== null && data[i - 1] !== null) {
+        const selected = i > start && i <= end;
+        markup += `<line x1="${x(i - 1)}" y1="${y(data[i - 1])}" x2="${x(i)}" y2="${y(p)}" stroke="${selected ? 'var(--accent)' : 'var(--muted)'}" stroke-width="${selected ? 2.5 : 1.5}"/>`;
+      }
+      if (p === null) markup += `<text x="${x(i)}" y="${bottom - 8}" text-anchor="middle" fill="var(--accent)" font-size="11">×</text>`;
+      else markup += `<circle cx="${x(i)}" cy="${y(p)}" r="${i === state.t ? 5 : 3.3}" fill="${i === state.t ? 'var(--green)' : i >= start && i <= end ? 'var(--accent)' : 'var(--surface)'}" stroke="${i === state.t ? 'var(--green)' : i >= start && i <= end ? 'var(--accent)' : 'var(--muted)'}" stroke-width="1.5"><title>记录 ${i}: ${p.toFixed(2)}</title></circle>`;
+    });
+    const tickStep = width < 420 ? 3 : 2;
+    for (let i = 0; i < 12; i += tickStep) markup += `<text x="${x(i)}" y="${height - 14}" text-anchor="middle" fill="var(--muted)" font-size="10">${i}</text>`;
+    markup += `<text x="${width - right}" y="${height - 1}" text-anchor="end" fill="var(--muted)" font-size="10">交易记录位置</text>`;
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`); svg.innerHTML = markup;
+  }
+  function update() {
+    const mode = modes[state.mode], volatility = state.mode === 'historyVol' || state.mode === 'forwardVol';
+    const offset = mode.future || mode.factor ? state.offset : 0;
+    const prices = priceData(); currentResult = calculate(prices, state.mode, state.t, state.window, offset);
+    const { start, end, value, reason } = currentResult;
+    document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)));
+    $('anchor').value = state.t; $('anchor-value').textContent = state.t;
+    $('window').value = state.window; $('window-value').textContent = state.window;
+    $('offset').value = state.offset; $('offset-value').textContent = state.offset;
+    $('offset-label').textContent = mode.factor ? '剔除最近 skip 期' : '入场间隔 gap';
+    $('offset-field').hidden = !mode.future && !mode.factor;
+    $('missing').checked = state.missing;
+    $('result-value').textContent = Number.isNaN(value) ? 'NaN' : mode.factor ? value.toFixed(5) : `${(value * 100).toFixed(2)}%`;
+    $('result-label').textContent = `${mode.name} · ${mode.factor ? '对数收益, 不年化' : volatility ? 'ddof=1, 不年化' : '区间简单收益'}`;
+    const path = `P[${start}] → P[${end}]`, count = `${state.window} 期收益 / ${state.window + 1} 条价格`;
+    $('interval-caption').textContent = `${mode.future ? '未来区间' : '历史区间'}: ${path} · ${count}`;
+    let expression = volatility ? `std(r[${start + 1}], …, r[${end}])` : `${mode.factor ? state.mode === 'reversal' ? '-log' : 'log' : ''}(P[${end}] / P[${start}])${mode.factor ? '' : ' - 1'}`;
+    if (Number.isFinite(value) && !volatility) expression = mode.factor ? `${state.mode === 'reversal' ? '-log' : 'log'}(${prices[end].toFixed(2)} / ${prices[start].toFixed(2)})` : `${prices[end].toFixed(2)} / ${prices[start].toFixed(2)} - 1`;
+    $('formula').textContent = expression;
+    const detail = document.createElement('small');
+    detail.textContent = reason === 'bounds' ? '所需记录超出样例范围, 返回 NaN' : reason === 'missing' ? '所需价格缺失, 不填补, 返回 NaN' : mode.future ? `基准 t=${state.t}, 从 t+${offset} 的价格开始` : mode.factor ? `截至 t-${offset}, 剔除最近 ${offset} 期` : `截至基准 t=${state.t}, 包含当天价格`;
+    $('formula').append(detail);
+    const args = mode.module === 'returns' ? `df=prices, n_periods=${state.window}${mode.future ? `, gap=${offset}` : ''}` : mode.factor ? `prices, window=${state.window}, skip=${offset}` : `df=prices, window=${state.window}${mode.future ? `, gap=${offset}` : ''},\n    price_col="adj_close"`;
+    const call = `result = ${mode.fn}(\n    ${args}\n)\nprint(result.iloc[${state.t}])`;
+    $('code').textContent = `from quanttoolkit.${mode.module} import ${mode.fn}\n\n${call}`;
+    const literals = prices.map(p => p === null ? 'float("nan")' : String(p)).join(', ');
+    completeCode = `import pandas as pd\nfrom quanttoolkit.transfer import to_date_ticker_frame\nfrom quanttoolkit.${mode.module} import ${mode.fn}\n\nprices = to_date_ticker_frame(df=pd.DataFrame({\n    "date": pd.bdate_range("2024-01-02", periods=12),\n    "ticker": ["A"] * 12,\n    "adj_close": [${literals}],\n}))\n\n${call}\n`;
+    $('copy').textContent = '复制完整示例';
+    $('lab-note').textContent = `${mode.future ? '未来数据用于事后标签, 基准日不可作为已知特征。' : '历史窗口截至基准记录, 因子信号的成交时点由调用方另行处理。'}${volatility || mode.factor ? '窗口内需连续有效价格。' : '简单区间收益只需要两个端点, 中间价格缺失不影响结果。'}期数按证券自身记录计数, 不补齐日期, 不模拟费用或成交。`;
+    document.querySelectorAll('[data-record]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.record) === state.t)));
+    chart();
+  }
+  for (let i = 0; i < samplePrices.length; i++) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'record'; b.dataset.record = i; b.textContent = i;
+    b.setAttribute('aria-label', `将基准设为记录 ${i}, 样例价格 ${samplePrices[i]}`); b.addEventListener('click', () => { state.t = i; update(); }); $('record-picker').append(b);
+  }
+  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { state.mode = b.dataset.mode; update(); }));
+  [['anchor', 't'], ['window', 'window'], ['offset', 'offset']].forEach(([id, key]) => $(id).addEventListener('input', e => { state[key] = Number(e.target.value); update(); }));
+  $('missing').addEventListener('change', e => { state.missing = e.target.checked; update(); });
+  $('reset').addEventListener('click', () => { state = { mode:'future', t:5, window:3, offset:1, missing:false }; update(); });
+  document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+    state = { mode:'future', t:5, window:3, offset:b.dataset.preset === 'gap' ? 0 : 1, missing:b.dataset.preset === 'missing' };
+    if (b.dataset.preset === 'edge') state.t = 11;
+    update(); $('lab').scrollIntoView({ behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  }));
+  $('copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(completeCode); $('copy').textContent = '已复制 ✓'; }
+    catch { $('code').textContent = completeCode; const selection = window.getSelection(), range = document.createRange(); range.selectNodeContents($('code')); selection.removeAllRanges(); selection.addRange(range); $('copy').textContent = '示例已选中, 请手动复制'; }
+  });
+  $('theme').addEventListener('click', () => {
+    const isDark = document.documentElement.dataset.theme === 'dark' || !document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.dataset.theme = isDark ? 'light' : 'dark';
+  });
+  selectStage('transfer'); update(); new ResizeObserver(chart).observe($('chart'));
+})();
+</script>
+</body>
+</html>
