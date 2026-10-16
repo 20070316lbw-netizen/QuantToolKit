@@ -41,7 +41,9 @@ uv add "quanttoolkit @ git+https://github.com/20070316lbw-netizen/QuantToolKit.g
 
 ## 介绍一下自己
 liu 
+
 邮箱: 20070316lbw@gmail.com
+
 学校: Hunan University of Information Technology
 
 Agent: Grok, DeepSeek, GPT
