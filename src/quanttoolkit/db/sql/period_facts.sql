@@ -1,1 +1,0 @@
-INSERT OR REPLACE INTO period_facts BY NAME SELECT * FROM df;

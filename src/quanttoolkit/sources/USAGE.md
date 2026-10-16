@@ -1,57 +1,60 @@
-## SEC 官方 companyfacts.zip 获取方法:
+## Kenneth French 日频因子
 
 ```bash
-curl -H "User-Agent: 你的名字 你的邮箱" \
-  -o data/companyfacts.zip \
-  https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip
+curl -L -o data/ff3_daily.zip \
+  https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip
+
+curl -L -o data/ff5_daily.zip \
+  https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_5_Factors_2x3_daily_CSV.zip
 ```
 
-成员名单入库后, 从仓库根目录运行:
+两个压缩包放到 `data/` 后, 从仓库根目录运行:
 
 ```bash
-uv run python scripts/ingest_companyfacts.py
+uv run python scripts/ingest_french.py
 ```
 
-脚本读取 `universe` 的 CIK, 将带 `start` 的事实写入 `period_facts`, 其余写入 `instant_facts`
-读取单批公司时:
+脚本把两份日频因子写入 `ff_factors`, `model` 为 `ff3` 或 `ff5`
+三因子列为 `mkt_rf`, `smb`, `hml`, `rf`, 五因子再加 `rmw`, `cma`
+五因子行才有 `rmw` 和 `cma`, 三因子这两列为空
+官方文件里的数是百分数, 入库前除以 100, `0.0009` 表示 0.09%
+三因子和五因子的 `smb` 不是同一条序列, 回归时按 `model` 分开用
+`mkt_rf` 已经减去无风险利率, `rf` 是把月度国库券利率摊到每个交易日的简单收益率
+
+单独读取时:
 
 ```python
-from quanttoolkit.sources.companyfacts import read_company_facts
+from quanttoolkit.sources.french import read_french_factors
 
-period, instant = read_company_facts("data/companyfacts.zip", ["0000320193"])
+ff3 = read_french_factors("data/ff3_daily.zip")
+ff5 = read_french_factors("data/ff5_daily.zip")
 ```
 
+返回以 `date` 为索引的 DataFrame, 按日期升序, 单位是小数收益率
 
-## 官方映射表获取方法
 
-```bash
-curl -H "User-Agent: 你的名字 you@example.com" \
-  -o data/company_tickers.json https://www.sec.gov/files/company_tickers.json
-```
-
-先下载映射文件, 再抓取最新标普500名单:
+## 标普500成员
 
 ```python
 from quanttoolkit.sources.wikipedia import fetch_sp500_universe
 
-universe = fetch_sp500_universe(json_path="data/company_tickers.json")
+universe = fetch_sp500_universe()
 ```
 
-返回普通 DataFrame, 列为 `ticker`, `name`, `sub_industry`, `cik`, `sec_title`, 按 ticker 升序排列
-`cik` 为10位字符串, `sec_title` 使用 JSON 的 `cik_str` 对应 `title` 填充, 未匹配时为缺失值
-映射文件必须事先下载, 文件不存在时抛出 `FileNotFoundError: 没有映射文件`, 并提示按上述方法获取
+返回普通 DataFrame, 列为 `ticker`, `name`, `sub_industry`, 按 ticker 升序排列
+`ticker` 把页面上的点号换成连字符, 如 `BRK.B` 转为 `BRK-B`
 
 ## 抓取到入库
 
-先按上面的命令下载 `data/company_tickers.json`, 再从仓库根目录运行:
+从仓库根目录运行:
 
 ```bash
 uv run python scripts/ingest_universe.py
 ```
 
-脚本抓取最新成员并映射 SEC 名称, 写入 `data/quanttoolkit.db` 的 `universe` 表
+脚本抓取最新成员, 写入 `data/quanttoolkit.db` 的 `universe` 表
 首次运行自动建表, 再次运行完整替换成员名单, 写入过程使用事务, 失败时保留原数据
-运行结束会显示抓取记录数, 入库记录数, SEC 名称缺失数和数据库路径
+运行结束会显示抓取记录数, 入库记录数和数据库路径
 
 单独调用入库函数:
 
@@ -60,7 +63,7 @@ from quanttoolkit.db.connection import DB, get_duckdb
 from quanttoolkit.db.operation import SQL_DIR, operation_sql, read_sql
 from quanttoolkit.sources.wikipedia import fetch_sp500_universe
 
-universe = fetch_sp500_universe(json_path="data/company_tickers.json")
+universe = fetch_sp500_universe()
 with get_duckdb(path=DB, read_only=False) as connection:
     written = operation_sql(
         read_sql(SQL_DIR / "universe.sql"),

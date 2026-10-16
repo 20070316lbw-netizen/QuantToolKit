@@ -24,8 +24,6 @@ def universe():
             "ticker": ["AAPL", "BRK-B"],
             "name": ["Apple Inc.", "Berkshire Hathaway"],
             "sub_industry": ["Technology Hardware", "Financial Services"],
-            "cik": ["0000320193", "0001067983"],
-            "sec_title": ["Apple Inc.", pd.NA],
         }
     )
 
@@ -39,8 +37,8 @@ def test_universe_persists_data(tmp_path, universe):
         rows = connection.execute("SELECT * FROM universe ORDER BY ticker").fetchall()
 
     assert rows == [
-        ("AAPL", "Apple Inc.", "Technology Hardware", "0000320193", "Apple Inc."),
-        ("BRK-B", "Berkshire Hathaway", "Financial Services", "0001067983", None),
+        ("AAPL", "Apple Inc.", "Technology Hardware"),
+        ("BRK-B", "Berkshire Hathaway", "Financial Services"),
     ]
 
 
@@ -178,7 +176,7 @@ def test_prices_bad_columns_and_read_only_database_preserve_data(tmp_path, price
 
 def test_universe_replaces_current_members(universe):
     latest = universe.iloc[:1].copy()
-    latest["sec_title"] = "APPLE INC"
+    latest["name"] = "APPLE INC"
     latest = latest[latest.columns[::-1]]
 
     with duckdb.connect(":memory:") as connection:
@@ -186,14 +184,14 @@ def test_universe_replaces_current_members(universe):
         write(connection, "universe", universe)
         assert write(connection, "universe", latest) == 1
         assert write(connection, "universe", latest) == 1
-        assert connection.execute(
-            "SELECT ticker, sec_title FROM universe"
-        ).fetchall() == [("AAPL", "APPLE INC")]
+        assert connection.execute("SELECT ticker, name FROM universe").fetchall() == [
+            ("AAPL", "APPLE INC")
+        ]
         assert connection.execute("SELECT value FROM other_data").fetchone() == (42,)
 
 
 def test_universe_failure_rolls_back(universe):
-    invalid = universe.rename(columns={"cik": "unknown_column"})
+    invalid = universe.rename(columns={"sub_industry": "unknown_column"})
     with duckdb.connect(":memory:") as connection:
         write(connection, "universe", universe)
         before = connection.execute("SELECT * FROM universe ORDER BY ticker").fetchall()

@@ -1,1 +1,0 @@
-INSERT OR REPLACE INTO instant_facts BY NAME SELECT * FROM df;

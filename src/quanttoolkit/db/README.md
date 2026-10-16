@@ -1,6 +1,6 @@
 # db
 
-提供 DuckDB 连接和事务写入, 支持最新标普500成员名单的 `universe` 表, 日行情的 `prices` 表, 以及公司事实的 `period_facts` 和 `instant_facts` 表
+提供 DuckDB 连接和事务写入, 支持最新标普500成员名单的 `universe` 表, 日行情的 `prices` 表, 以及 Kenneth French 日频因子的 `ff_factors` 表
 
 | 文件 | 接口 | 职责 |
 | --- | --- | --- |
@@ -20,10 +20,8 @@
 | `universe.sql` | 清空后按列名写入整份成员名单 |
 | `prices_ddl.sql` | 创建 `prices`, 主键为 `(ticker, date)` |
 | `prices.sql` | 按 `(ticker, date)` 新增或整行替换日行情 |
-| `period_facts_ddl.sql` | 创建 `period_facts`, 主键含期间起止日和申报编号 |
-| `period_facts.sql` | 按主键新增或整行替换期间事实 |
-| `instant_facts_ddl.sql` | 创建 `instant_facts`, 主键含时点日和申报编号 |
-| `instant_facts.sql` | 按主键新增或整行替换时点事实 |
+| `ff_factors_ddl.sql` | 创建 `ff_factors`, 主键为 `(model, date)` |
+| `ff_factors.sql` | 清空后按列名写入 FF3 与 FF5 日频因子 |
 
 写入语句里的 `df` 指向 `operation_sql` 的同名参数
 DuckDB 只在执行 `execute` 的函数里查找这个名字, 所以 DataFrame 必须传给 `operation_sql`, 不能只放在调用方的局部变量里
@@ -35,16 +33,11 @@ DuckDB 只在执行 `execute` 的函数里查找这个名字, 所以 DataFrame �
 | `ticker` | VARCHAR | 证券代码, 如 `AAPL`, `BRK-B` |
 | `name` | VARCHAR | Wikipedia 成员表中的公司名称 |
 | `sub_industry` | VARCHAR | Wikipedia 成员表中的 GICS 子行业 |
-| `cik` | VARCHAR | 10位 SEC 公司标识, 保留前导零, 如 `0000320193` |
-| `sec_title` | VARCHAR | SEC company_tickers.json 中按 CIK 匹配的 title, 未匹配时为 NULL |
 
-数据源返回普通 DataFrame, 五个字段作为普通列, 按 ticker 升序排列
+数据源返回普通 DataFrame, 三个字段作为普通列, 按 ticker 升序排列
 `universe` 保存最近一次写入的完整成员名单
 
 ## 抓取到入库
-
-先按 [sources 获取方法](../sources/USAGE.md#官方映射表获取方法) 下载 `data/company_tickers.json`
-映射文件不存在时, 抓取函数会先抛出 `FileNotFoundError: 没有映射文件`
 
 从仓库根目录运行:
 
@@ -52,8 +45,8 @@ DuckDB 只在执行 `execute` 的函数里查找这个名字, 所以 DataFrame �
 uv run python scripts/ingest_universe.py
 ```
 
-[流程脚本](../../../scripts/ingest_universe.py) 读取本地映射文件, 抓取最新成员, 写入 `data/quanttoolkit.db`
-运行结束显示抓取条数, 写入条数, 表中记录数, SEC 名称缺失数和数据库路径
+[流程脚本](../../../scripts/ingest_universe.py) 抓取最新成员, 写入 `data/quanttoolkit.db`
+运行结束显示抓取条数, 写入条数, 表中记录数和数据库路径
 脚本以自身位置确定仓库目录, 数据文件路径不依赖当前工作目录
 
 ## 读取数据库
@@ -87,8 +80,6 @@ universe = pd.DataFrame(
             "ticker": "AAPL",
             "name": "Apple Inc.",
             "sub_industry": "Technology Hardware, Storage & Peripherals",
-            "cik": "0000320193",
-            "sec_title": "Apple Inc.",
         }
     ]
 )
@@ -169,66 +160,24 @@ with duckdb.connect(":memory:") as connection:
 print(written, updated, rows)  # 1 1 [('AAPL', 188.0)]
 ```
 
-## 写入公司事实
+## 写入 French 因子
 
-`period_facts` 保存带开始日的事实, 如收入, 净利润, 经营现金流
-`instant_facts` 保存只有结束日的事实, 如资产, 股东权益, 流通股数
-两表列相同, 时点表没有 `period_start`
-`cik` 为10位字符串, 与 `universe.cik` 对应, 证券代码查询时再连接 `universe`
+`ff_factors` 保存 Kenneth French 的 FF3 与 FF5 日频因子收益
+主键是 `(model, date)`, `model` 取 `ff3` 或 `ff5`
+列为 `mkt_rf`, `smb`, `hml`, `rmw`, `cma`, `rf`, 单位是小数收益率
+`rmw` 和 `cma` 只在 `ff5` 有值
+每次写入先清空全表, 再写入这次传入的全部行
 
-| 字段 | 数据库类型 | 内容 |
-| --- | --- | --- |
-| `cik` | VARCHAR | 10位 SEC 公司标识 |
-| `taxonomy` | VARCHAR | 准则词典, 如 `us-gaap`, `ifrs-full`, `dei` |
-| `concept` | VARCHAR | 词典中的科目名 |
-| `unit` | VARCHAR | 单位, 如 `USD`, `USD/shares`, `shares` |
-| `period_start` | DATE | 期间开始日, 仅 `period_facts` |
-| `period_end` | DATE | 结束日 |
-| `val` | DOUBLE | 数值, 金额为原始单位 |
-| `accn` | VARCHAR | 申报编号 |
-| `form` | VARCHAR | 申报类型, 如 `10-K`, `10-Q`, `20-F` |
-| `filed` | DATE | 申报日 |
-| `fy` | INTEGER | 申报所属财年, 比较期沿用这份申报的值, 可空 |
-| `fp` | VARCHAR | 申报所属期间, 可空 |
-| `frame` | VARCHAR | SEC 日历框, 如 `CY2025`, `CY2025Q3`, `CY2025Q4I`, 可空 |
-
-先入库 `universe`, 并按 [sources 获取方法](../sources/USAGE.md) 放好 `data/companyfacts.zip`
-从仓库根目录运行:
+先按 [sources 获取方法](../sources/USAGE.md#kenneth-french-日频因子) 放好两个压缩包, 从仓库根目录运行:
 
 ```bash
-uv run python scripts/ingest_companyfacts.py
-```
-
-脚本只读取 `universe` 中的 CIK, 写入这些公司 JSON 里的全部标准分类事实
-公司自建标签不在压缩包中
-同一主键整行替换, 新的申报编号另存一行
-每批公司单独提交, 中断后重跑会补齐已处理的主键
-
-## 申报日基本面
-
-[`read_filing_panel`](../fundamentals.py) 读取 `universe`, `instant_facts`, `period_facts`
-收成每个 `(ticker, filed)` 一行, 口径见 [因子文档](../../../docs/factors.md#基本面)
-账面市值比和盈利收益率再用行情里的 `close` 对齐到交易日
-
-```python
-from quanttoolkit.db.connection import DB, get_duckdb
-from quanttoolkit.factors.fundamental import book_to_market
-from quanttoolkit.fundamentals import read_filing_panel
-from quanttoolkit.transfer import to_date_ticker_frame
-
-with get_duckdb(path=DB) as connection:
-    filings = read_filing_panel(connection)
-    prices = to_date_ticker_frame(
-        df=connection.execute("SELECT date, ticker, close FROM prices").df()
-    )
-
-factor = book_to_market(prices, filings)
+uv run python scripts/ingest_french.py
 ```
 
 ## 本地检查
 
 ```bash
-uv run pytest -q tests/test_operation.py tests/test_wikipedia.py tests/test_price_pipeline.py tests/test_fundamentals.py
+uv run pytest -q tests/test_operation.py tests/test_wikipedia.py tests/test_price_pipeline.py tests/test_french.py
 uv run python -m doctest src/quanttoolkit/db/operation.py
 uv run ruff check src/quanttoolkit/db/operation.py scripts/ingest_universe.py tests/test_operation.py
 uv run ruff format --check src/quanttoolkit/db/operation.py scripts/ingest_universe.py tests/test_operation.py

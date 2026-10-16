@@ -57,7 +57,6 @@ def operation_sql(
         >>> df = pd.DataFrame([{
         ...     "ticker": "AAPL", "name": "Apple Inc.",
         ...     "sub_industry": "Technology Hardware",
-        ...     "cik": "0000320193", "sec_title": "Apple Inc."
         ... }])
         >>> with duckdb.connect(":memory:") as connection:
         ...     operation_sql(
