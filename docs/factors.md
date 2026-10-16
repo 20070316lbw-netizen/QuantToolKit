@@ -111,6 +111,45 @@ assert factor.iloc[2] == 50.0
 assert factor.iloc[3] == 75.0
 ```
 
+## 基本面
+
+[`filing_panel`](../src/quanttoolkit/fundamentals.py) 把时点科目和期间科目收成每个 `(ticker, filed)` 一行
+时点科目取该披露日及之前 `period_end` 最晚的一条, 只修订更早的截止日时不退回比较期
+单季跨度包含 80 到 100 天, 全年跨度包含 350 到 380 天
+全年截止日还没有单季时, 第四季等于全年减去该财年内的前三季
+`net_income_ttm` 是当时已经披露的最近四个单季之和
+`asset_growth` 是当前资产除以大约一年前的资产再减 1, 间隔取 300 到 430 天里最接近 365 天的那份
+算不出增长率的资产披露日, 增长率缺失, 不沿用上一份
+[`read_filing_panel`](../src/quanttoolkit/fundamentals.py) 从已入库的三张表读出这个面板
+
+[`align_filings`](../src/quanttoolkit/fundamentals.py) 按 `filed` 把面板对齐到行情的每个交易日, 披露当天可用
+[`book_to_market`](../src/quanttoolkit/factors/fundamental.py) 是权益除以当天 `close` 乘以股数
+[`earnings_yield`](../src/quanttoolkit/factors/fundamental.py) 是滚动四季净利润除以同一市值
+市值不用 `adj_close`
+[`asset_growth`](../src/quanttoolkit/factors/fundamental.py) 把申报日上的资产增长率放到每个交易日
+三个因子都返回 `[date, ticker]` Series, 可以交给 `zscore_by_date`
+
+```python
+import pandas as pd
+
+from quanttoolkit.factors.fundamental import book_to_market
+
+index = pd.MultiIndex.from_product(
+    [pd.to_datetime(["2024-01-02", "2024-01-03"]), ["A"]],
+    names=["date", "ticker"],
+)
+prices = pd.DataFrame({"close": [5.0, 10.0]}, index=index)
+filings = pd.DataFrame(
+    {
+        "ticker": ["A"],
+        "filed": pd.to_datetime(["2024-01-02"]),
+        "equity": [50.0],
+        "shares": [2.0],
+    }
+)
+assert book_to_market(prices, filings).tolist() == [5.0, 2.5]
+```
+
 ## 截面标准化
 
 [`zscore_by_date`](../src/quanttoolkit/factors/zscore.py) 把因子面板的每一列变成当天截面上的 z-score

@@ -204,10 +204,31 @@ uv run python scripts/ingest_companyfacts.py
 同一主键整行替换, 新的申报编号另存一行
 每批公司单独提交, 中断后重跑会补齐已处理的主键
 
+## 申报日基本面
+
+[`read_filing_panel`](../fundamentals.py) 读取 `universe`, `instant_facts`, `period_facts`
+收成每个 `(ticker, filed)` 一行, 口径见 [因子文档](../../../docs/factors.md#基本面)
+账面市值比和盈利收益率再用行情里的 `close` 对齐到交易日
+
+```python
+from quanttoolkit.db.connection import DB, get_duckdb
+from quanttoolkit.factors.fundamental import book_to_market
+from quanttoolkit.fundamentals import read_filing_panel
+from quanttoolkit.transfer import to_date_ticker_frame
+
+with get_duckdb(path=DB) as connection:
+    filings = read_filing_panel(connection)
+    prices = to_date_ticker_frame(
+        df=connection.execute("SELECT date, ticker, close FROM prices").df()
+    )
+
+factor = book_to_market(prices, filings)
+```
+
 ## 本地检查
 
 ```bash
-uv run pytest -q tests/test_operation.py tests/test_wikipedia.py tests/test_price_pipeline.py
+uv run pytest -q tests/test_operation.py tests/test_wikipedia.py tests/test_price_pipeline.py tests/test_fundamentals.py
 uv run python -m doctest src/quanttoolkit/db/operation.py
 uv run ruff check src/quanttoolkit/db/operation.py scripts/ingest_universe.py tests/test_operation.py
 uv run ruff format --check src/quanttoolkit/db/operation.py scripts/ingest_universe.py tests/test_operation.py
