@@ -25,6 +25,7 @@ uv add "quanttoolkit @ git+https://github.com/20070316lbw-netizen/QuantToolKit.g
 | [volatility](docs/volatility.md) | 历史与未来简单收益波动率 | 已实现 |
 | [rebalance](docs/rebalance.md) | 共同交易日历的调仓日期与区间归属 | 已实现 |
 | [factors](docs/factors.md) | 动量, 反转, 对数波动率, RSI, 行业中性, 截面 z-score 与加权合成 | 已实现 |
+| [split](docs/split.md) | 按交易日切分 train, valid, test, 并空出标签重叠的日期 | 已实现 |
 | [sizing](docs/sizing.md) | 调仓日截面的分位多空权重 | 已实现 |
 | [benchmark](docs/benchmark.md) | 首日等权买入并持有的组合收益 | 已实现 |
 | [metrics](docs/metrics.md) | 截面 IC, 信息比率, 夏普与最大回撤等评定指标 | 已实现 |
