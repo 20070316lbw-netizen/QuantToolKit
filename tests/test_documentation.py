@@ -7,6 +7,7 @@ import pytest
 
 from quanttoolkit import (
     benchmark,
+    dataset,
     metrics,
     rebalance,
     returns,
@@ -27,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
         "rebalance",
         "factors",
         "split",
+        "dataset",
         "metrics",
         "sizing",
         "benchmark",
@@ -42,7 +44,8 @@ def test_offline_documentation_examples(name):
 
 
 @pytest.mark.parametrize(
-    "module", [returns, volatility, rebalance, transfer, metrics, benchmark, split]
+    "module",
+    [returns, volatility, rebalance, transfer, metrics, benchmark, split, dataset],
 )
 def test_calculation_docstrings(module):
     result = doctest.testmod(module)

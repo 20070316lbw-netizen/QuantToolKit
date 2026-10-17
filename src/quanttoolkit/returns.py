@@ -25,7 +25,10 @@ def future_returns(
         排序后的 [date, ticker] Series, name 为 forward_return_{n_periods}_gap_{gap}
         值为 price[t+gap+n_periods] / price[t+gap] - 1, 单位为小数收益率
         未来记录不足或端点缺失时为 NaN, 不填补价格; 空输入返回空 Series
-        使用未来数据, 仅用于事后生成标签
+        使用未来数据, 是监督模型的标签, 例如 LightGBM 要预测的持有期收益
+        基准日还不知道这个值, 不能当作当天的特征
+        与 split_dates 合用时, embargo 取 gap + n_periods
+        因为标签用到的最后价格落在 t + gap + n_periods
 
     Raises:
         KeyError: price_col 指定的列或 ticker 索引层不存在
