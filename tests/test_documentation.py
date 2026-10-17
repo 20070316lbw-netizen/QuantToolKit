@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from quanttoolkit import metrics, rebalance, returns, transfer, volatility
+from quanttoolkit import benchmark, metrics, rebalance, returns, transfer, volatility
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
         "factors",
         "metrics",
         "sizing",
+        "benchmark",
     ],
 )
 def test_offline_documentation_examples(name):
@@ -31,7 +32,9 @@ def test_offline_documentation_examples(name):
         exec(compile(block, f"docs/{name}.md", "exec"), {})  # noqa: S102
 
 
-@pytest.mark.parametrize("module", [returns, volatility, rebalance, transfer, metrics])
+@pytest.mark.parametrize(
+    "module", [returns, volatility, rebalance, transfer, metrics, benchmark]
+)
 def test_calculation_docstrings(module):
     result = doctest.testmod(module)
     assert result.failed == 0

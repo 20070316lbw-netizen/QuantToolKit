@@ -132,6 +132,35 @@ factors = pd.DataFrame({"f1": [1.0, 2.0, 3.0]}, index=index)
 assert zscore_by_date(factors)["f1"].tolist() == [-1.0, 0.0, 1.0]
 ```
 
+## 行业中性
+
+[`neutralize_by_industry`](../src/quanttoolkit/factors/neutral.py) 在每个日期内, 按行业减去该列的截面均值
+行业标签是索引为 `ticker` 的 Series, 按证券代码对齐, 不要求带日期
+没有行业标签的证券结果为 NaN
+行业内只有一个有效值时结果为 0
+中性化之后仍用已有的 `zscore_by_date` 和 `combine_scores` 合成
+不修改输入
+
+```python
+import pandas as pd
+
+from quanttoolkit.factors.combine import combine_scores
+from quanttoolkit.factors.neutral import neutralize_by_industry
+from quanttoolkit.factors.zscore import zscore_by_date
+
+index = pd.MultiIndex.from_product(
+    [pd.to_datetime(["2024-01-02"]), ["A", "B", "C"]],
+    names=["date", "ticker"],
+)
+factors = pd.DataFrame({"f1": [1.0, 3.0, 10.0]}, index=index)
+industry = pd.Series(["Tech", "Tech", "Bank"], index=["A", "B", "C"])
+neutral = neutralize_by_industry(factors, industry)
+assert neutral["f1"].tolist() == [-1.0, 1.0, 0.0]
+score = combine_scores(zscore_by_date(neutral))
+assert score.name == "score"
+assert score.tolist() == [-1.0, 1.0, 0.0]
+```
+
 ## 加权合成
 
 [`combine_scores`](../src/quanttoolkit/factors/combine.py) 把已经标准化的因子列合成名为 `score` 的 Series
