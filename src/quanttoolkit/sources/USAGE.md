@@ -117,10 +117,10 @@ prices = get_prices(
 ```python
 from quanttoolkit.db import SQL_DIR, get_duckdb, operation_sql, read_sql
 from quanttoolkit.db.connection import DB
-from quanttoolkit.prices import fill_price_gaps
-from quanttoolkit.returns import historical_return
+from quanttoolkit.panel.prices import fill_price_gaps
+from quanttoolkit.panel.returns import historical_return
 from quanttoolkit.sources import get_prices
-from quanttoolkit.transfer import to_date_ticker_frame
+from quanttoolkit.panel.transfer import to_date_ticker_frame
 
 prices = fill_price_gaps(
     get_prices("AAPL", start="2024-01-01", end="2024-02-01", progress=False)

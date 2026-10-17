@@ -9,7 +9,7 @@ from datetime import date, datetime
 import pandas as pd
 from loguru import logger
 
-from quanttoolkit.transfer import to_date_ticker_frame
+from quanttoolkit.panel.transfer import to_date_ticker_frame
 
 DateLike = str | date | datetime
 

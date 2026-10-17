@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from quanttoolkit import sizing
-from quanttoolkit.sizing import simple_quantile_long_short
+from quanttoolkit.portfolio import sizing
+from quanttoolkit.portfolio.sizing import simple_quantile_long_short
 
 
 def _score(values: list[float], dates: list[str], tickers: list[str]) -> pd.Series:

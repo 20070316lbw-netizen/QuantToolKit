@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from quanttoolkit.dataset import assemble_samples
+from quanttoolkit.model.dataset import assemble_samples
 
 
 def _index():

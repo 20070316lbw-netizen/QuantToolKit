@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from quanttoolkit.returns import future_returns, historical_return, log_returns
+from quanttoolkit.panel.returns import future_returns, historical_return, log_returns
 
 
 def test_historical_return_uses_each_tickers_records(price_panel):

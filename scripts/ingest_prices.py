@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from quanttoolkit.db.connection import DB, get_duckdb
 from quanttoolkit.db.operation import SQL_DIR, operation_sql, read_sql
-from quanttoolkit.prices import fill_price_gaps
+from quanttoolkit.panel.prices import fill_price_gaps
 from quanttoolkit.sources import get_prices
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from quanttoolkit.returns import log_returns
+from quanttoolkit.panel.returns import log_returns
 
 
 def base_momfactor(

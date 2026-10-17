@@ -1,6 +1,6 @@
 # 调仓日历
 
-实现见 [rebalance.py](../src/quanttoolkit/rebalance.py)。输入为共同交易日历 `DatetimeIndex`,
+实现见 [rebalance.py](../src/quanttoolkit/portfolio/rebalance.py)。输入为共同交易日历 `DatetimeIndex`,
 从行情索引的 `date` 层提取, 按排序去重后的日历记录计数, 不按每只证券自己的记录计数。
 
 | 接口 | 返回值 | 规则 |
@@ -16,7 +16,7 @@
 ```python
 import pandas as pd
 
-from quanttoolkit.rebalance import rebalance_dates, rebalance_dates_belong
+from quanttoolkit.portfolio.rebalance import rebalance_dates, rebalance_dates_belong
 
 dates = pd.DatetimeIndex(
     ["2024-01-08", "2024-01-02", "2024-01-03", "2024-01-02"], name="date"

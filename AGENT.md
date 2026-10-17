@@ -2,6 +2,13 @@
 - 不要编写不需要的代码, 不要加上很多没必要的边界情况 比如字段校验
 - 项目是个人项目, 不是大项目, 不要考虑个人使用时很难发生的情况
 - 未经过允许, 不能使用 pydantic, dataclass 等内容
+- 例外: `src/quanttoolkit/model` 里的模型参数和训练日志允许使用 dataclass
+  每种模型的参数放在各自的类里, LightGBM, 神经网络, Transformer 分开写
+  外面调用时, 没有手动改动的字段使用类里写好的默认值
+  这些类要能写成 JSON, 用来保存训练日志
+  字段只使用 str, int, float, bool, list, dict
+  这里也不要使用 pydantic
+  其他目录仍然不能使用 dataclass 或 pydantic
 - 代码注释中不能使用句号, 如果必须使用, 用回车来换行替代
 - 项目不需要 cli 命令行启动, 所以不要使用 argparse
 - 不许为了兼容旧代码而保留旧名字和旧接口

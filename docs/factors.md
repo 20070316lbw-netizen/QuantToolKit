@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from quanttoolkit.factors.reversal_base import base_reversalfactor
-from quanttoolkit.transfer import to_date_ticker_frame
+from quanttoolkit.panel.transfer import to_date_ticker_frame
 
 prices = to_date_ticker_frame(
     df=pd.DataFrame(
@@ -57,7 +57,7 @@ import numpy as np
 import pandas as pd
 
 from quanttoolkit.factors.logvol_base import base_logvolfactor
-from quanttoolkit.transfer import to_date_ticker_frame
+from quanttoolkit.panel.transfer import to_date_ticker_frame
 
 prices = to_date_ticker_frame(
     df=pd.DataFrame(
@@ -93,7 +93,7 @@ assert np.isclose(factor.iloc[3], 0.0)
 import pandas as pd
 
 from quanttoolkit.factors.rsi_base import base_rsifactor
-from quanttoolkit.transfer import to_date_ticker_frame
+from quanttoolkit.panel.transfer import to_date_ticker_frame
 
 prices = to_date_ticker_frame(
     df=pd.DataFrame(

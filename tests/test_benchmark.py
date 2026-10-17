@@ -3,8 +3,8 @@ import doctest
 import numpy as np
 import pandas as pd
 
-from quanttoolkit import benchmark
-from quanttoolkit.benchmark import equal_weight_hold
+from quanttoolkit.portfolio import benchmark
+from quanttoolkit.portfolio.benchmark import equal_weight_hold
 
 
 def _prices(rows: list[tuple[str, str, float]]) -> pd.DataFrame:

@@ -1,6 +1,6 @@
 import pandas as pd
 
-from quanttoolkit.split import split_dates
+from quanttoolkit.model.split import split_dates
 
 
 def test_split_purges_tails_and_sorts_unique_dates():

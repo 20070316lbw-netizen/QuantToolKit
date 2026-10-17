@@ -9,18 +9,18 @@
 
 函数内部按 `[date, ticker]` 升序排序, 在每只证券内独立计算。不会修改输入,
 不会删除缺失价格记录、填补价格或补齐日期。每只证券的交易记录可以不等长, 日期可以不一致。
-入库脚本会先调用 [`fill_price_gaps`](../src/quanttoolkit/prices.py), 把每只证券首尾之间缺失的交易日写入 `prices`, 价格沿用前一条记录, volume 为 0。计算函数读到的是补齐后的面板, 自身仍然不补日期。
+入库脚本会先调用 [`fill_price_gaps`](../src/quanttoolkit/panel/prices.py), 把每只证券首尾之间缺失的交易日写入 `prices`, 价格沿用前一条记录, volume 为 0。计算函数读到的是补齐后的面板, 自身仍然不补日期。
 输出为保留全部输入键、名称明确的 `Series`, 计算不可用的位置保留 `NaN`。
 空输入也必须具有正确索引和价格列结构, 返回空 Series。
 
-时序数据源输出通过 [`to_date_ticker_frame`](../src/quanttoolkit/transfer.py) 转为计算格式。
+时序数据源输出通过 [`to_date_ticker_frame`](../src/quanttoolkit/panel/transfer.py) 转为计算格式。
 Yahoo 行情可直接用于计算, 入库时用 `.reset_index()` 转为 `prices` 表对应的长表。
 读取数据库或其他长表后, 使用同一转换函数:
 
 ```python
 import pandas as pd
 
-from quanttoolkit.transfer import to_date_ticker_frame
+from quanttoolkit.panel.transfer import to_date_ticker_frame
 
 raw = pd.DataFrame(
     {

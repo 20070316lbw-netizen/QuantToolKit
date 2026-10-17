@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from quanttoolkit.rebalance import rebalance_dates, rebalance_dates_belong
+from quanttoolkit.portfolio.rebalance import rebalance_dates, rebalance_dates_belong
 
 
 @pytest.mark.parametrize(

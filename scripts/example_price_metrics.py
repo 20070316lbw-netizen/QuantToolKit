@@ -2,10 +2,10 @@
 
 import pandas as pd
 
-from quanttoolkit.rebalance import rebalance_dates_belong
-from quanttoolkit.returns import future_returns, historical_return, log_returns
-from quanttoolkit.transfer import to_date_ticker_frame
-from quanttoolkit.volatility import forward_volatility, history_vol
+from quanttoolkit.panel.returns import future_returns, historical_return, log_returns
+from quanttoolkit.panel.transfer import to_date_ticker_frame
+from quanttoolkit.panel.volatility import forward_volatility, history_vol
+from quanttoolkit.portfolio.rebalance import rebalance_dates_belong
 
 
 def main() -> None:

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from quanttoolkit.volatility import forward_volatility, history_vol
+from quanttoolkit.panel.volatility import forward_volatility, history_vol
 
 
 def test_history_vol_sample_std_not_annualized(price_panel):

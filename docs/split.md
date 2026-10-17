@@ -1,6 +1,6 @@
 # 日期切分
 
-实现见 [split.py](../src/quanttoolkit/split.py)
+实现见 [split.py](../src/quanttoolkit/model/split.py)
 
 `split_dates` 把共同交易日历分成 `train`, `valid`, `test`
 比较的是排序去重后的日历, 不按自然日, 也不按单只证券自己的记录
@@ -22,7 +22,7 @@
 ```python
 import pandas as pd
 
-from quanttoolkit.split import split_dates
+from quanttoolkit.model.split import split_dates
 
 dates = pd.bdate_range("2024-01-01", periods=8, name="date")
 result = split_dates(dates, train_end="2024-01-04", valid_end="2024-01-09", embargo=1)

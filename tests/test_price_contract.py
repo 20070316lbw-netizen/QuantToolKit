@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from quanttoolkit.returns import future_returns, historical_return, log_returns
-from quanttoolkit.volatility import forward_volatility, history_vol
+from quanttoolkit.panel.returns import future_returns, historical_return, log_returns
+from quanttoolkit.panel.volatility import forward_volatility, history_vol
 
 CALCULATIONS = [
     future_returns,

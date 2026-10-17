@@ -1,6 +1,6 @@
 # 分位仓位
 
-实现见 [sizing.py](../src/quanttoolkit/sizing.py)
+实现见 [sizing.py](../src/quanttoolkit/portfolio/sizing.py)
 输入是调仓日上的 `[date, ticker]` 分数, 每个日期单独分组
 
 `simple_quantile_long_short` 用 `pd.qcut` 把当天分数分成 `n_quantiles` 组
@@ -17,7 +17,7 @@
 ```python
 import pandas as pd
 
-from quanttoolkit.sizing import simple_quantile_long_short
+from quanttoolkit.portfolio.sizing import simple_quantile_long_short
 
 index = pd.MultiIndex.from_product(
     [pd.to_datetime(["2024-01-01"]), ["A", "B", "C", "D", "E", "F"]],

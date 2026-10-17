@@ -5,16 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from quanttoolkit import (
-    benchmark,
-    dataset,
-    metrics,
-    rebalance,
-    returns,
-    split,
-    transfer,
-    volatility,
-)
+from quanttoolkit import metrics
+from quanttoolkit.model import dataset, split
+from quanttoolkit.model import lambdarank as model_lambdarank
+from quanttoolkit.model import lightgbm as model_lightgbm
+from quanttoolkit.model import params as model_params
+from quanttoolkit.panel import returns, transfer, volatility
+from quanttoolkit.portfolio import benchmark, rebalance
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -29,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
         "factors",
         "split",
         "dataset",
+        "model",
         "metrics",
         "sizing",
         "benchmark",
@@ -45,7 +43,19 @@ def test_offline_documentation_examples(name):
 
 @pytest.mark.parametrize(
     "module",
-    [returns, volatility, rebalance, transfer, metrics, benchmark, split, dataset],
+    [
+        returns,
+        volatility,
+        rebalance,
+        transfer,
+        metrics,
+        benchmark,
+        split,
+        dataset,
+        model_params,
+        model_lightgbm,
+        model_lambdarank,
+    ],
 )
 def test_calculation_docstrings(module):
     result = doctest.testmod(module)

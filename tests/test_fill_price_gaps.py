@@ -3,9 +3,9 @@ import doctest
 import numpy as np
 import pandas as pd
 
-from quanttoolkit import prices as prices_module
-from quanttoolkit.prices import fill_price_gaps
-from quanttoolkit.returns import log_returns
+from quanttoolkit.panel import prices as prices_module
+from quanttoolkit.panel.prices import fill_price_gaps
+from quanttoolkit.panel.returns import log_returns
 
 
 def _panel() -> pd.DataFrame:

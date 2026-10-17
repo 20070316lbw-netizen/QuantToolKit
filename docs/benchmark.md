@@ -1,6 +1,6 @@
 # 等权买入并持有
 
-实现见 [benchmark.py](../src/quanttoolkit/benchmark.py)
+实现见 [benchmark.py](../src/quanttoolkit/portfolio/benchmark.py)
 
 `equal_weight_hold` 用排序后第一个交易日上有价格的证券构造基准
 这些证券各买入相同金额, 之后不调仓, 份额保持不变
@@ -15,7 +15,7 @@
 ```python
 import pandas as pd
 
-from quanttoolkit.benchmark import equal_weight_hold
+from quanttoolkit.portfolio.benchmark import equal_weight_hold
 
 index = pd.MultiIndex.from_product(
     [pd.to_datetime(["2024-01-02", "2024-01-03"]), ["A", "B"]],

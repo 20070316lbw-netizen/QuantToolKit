@@ -25,7 +25,7 @@ def split_dates(
     这样训练日标签用到的最后价格仍早于 valid 的第一天, valid 相对 test 同样成立
     不修改输入, 也不补齐交易日
 
-    整个函数流程划分为: 
+    整个函数流程划分为:
         对共同交易日历排序并去重
                 |
         对齐端点时区：
@@ -40,7 +40,7 @@ def split_dates(
         labels[calendar > valid_stamp] = "test"
                 |
         最后分别丢掉 train 和 valid 的末尾
-           
+
 
 
     Args:

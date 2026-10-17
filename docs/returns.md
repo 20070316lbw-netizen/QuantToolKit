@@ -1,6 +1,6 @@
 # 收益率
 
-实现见 [returns.py](../src/quanttoolkit/returns.py), 输入格式见 [数据约定](data-structure.md)。
+实现见 [returns.py](../src/quanttoolkit/panel/returns.py), 输入格式见 [数据约定](data-structure.md)。
 全部接口仅接受关键词参数, 返回排序后的 `[date, ticker]` 命名 `Series`。
 `0.1` 表示 10% 收益。默认价格列为 `adj_close`, 可通过 `price_col` 选择其他列。
 
@@ -42,8 +42,8 @@
 import numpy as np
 import pandas as pd
 
-from quanttoolkit.returns import future_returns, historical_return, log_returns
-from quanttoolkit.transfer import to_date_ticker_frame
+from quanttoolkit.panel.returns import future_returns, historical_return, log_returns
+from quanttoolkit.panel.transfer import to_date_ticker_frame
 
 raw = pd.DataFrame(
     {

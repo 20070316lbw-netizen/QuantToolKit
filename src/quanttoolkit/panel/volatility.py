@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from quanttoolkit.returns import historical_return
+from quanttoolkit.panel.returns import historical_return
 
 
 def _rolling_vol(returns: pd.Series, window: int) -> pd.Series:

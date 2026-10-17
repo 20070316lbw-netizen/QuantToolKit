@@ -1,6 +1,6 @@
 # 波动率
 
-实现见 [volatility.py](../src/quanttoolkit/volatility.py), 输入格式见 [数据约定](data-structure.md)。
+实现见 [volatility.py](../src/quanttoolkit/panel/volatility.py), 输入格式见 [数据约定](data-structure.md)。
 接口仅接受关键词参数, 返回排序后的 `[date, ticker]` 命名 `Series`。
 默认价格列是 `close`; 要使用复权价格, 显式传 `price_col="adj_close"`。
 
@@ -40,8 +40,8 @@
 import numpy as np
 import pandas as pd
 
-from quanttoolkit.transfer import to_date_ticker_frame
-from quanttoolkit.volatility import forward_volatility, history_vol
+from quanttoolkit.panel.transfer import to_date_ticker_frame
+from quanttoolkit.panel.volatility import forward_volatility, history_vol
 
 prices = to_date_ticker_frame(
     df=pd.DataFrame(

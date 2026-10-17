@@ -1,6 +1,6 @@
 # 训练样本
 
-实现见 [dataset.py](../src/quanttoolkit/dataset.py)
+实现见 [dataset.py](../src/quanttoolkit/model/dataset.py)
 
 `assemble_samples` 把特征面板和一条未来收益标签对齐成监督学习样本
 索引是 `[date, ticker]`
@@ -21,7 +21,7 @@
 ```python
 import pandas as pd
 
-from quanttoolkit.dataset import assemble_samples
+from quanttoolkit.model.dataset import assemble_samples
 
 index = pd.MultiIndex.from_product(
     [pd.to_datetime(["2024-01-02", "2024-01-03"]), ["A", "B"]],
