@@ -10,6 +10,7 @@ from quanttoolkit.model import dataset, split
 from quanttoolkit.model import lambdarank as model_lambdarank
 from quanttoolkit.model import lightgbm as model_lightgbm
 from quanttoolkit.model import params as model_params
+from quanttoolkit.model import relevance as model_relevance
 from quanttoolkit.panel import returns, transfer, volatility
 from quanttoolkit.portfolio import benchmark, rebalance
 
@@ -55,6 +56,7 @@ def test_offline_documentation_examples(name):
         model_params,
         model_lightgbm,
         model_lambdarank,
+        model_relevance,
     ],
 )
 def test_calculation_docstrings(module):

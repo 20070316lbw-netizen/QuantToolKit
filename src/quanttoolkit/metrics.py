@@ -113,9 +113,12 @@ def ic_summary(*, ic: pd.Series) -> pd.Series:
             缺失日期表示该截面无法计算, 汇总时忽略
 
     Returns:
-        name 为 ic_summary 的 Series, 索引为 ic_mean, ic_std, ic_ir
+        name 为 ic_summary 的 Series
+        索引为 ic_mean, ic_std, ic_ir, ic_pos
         ic_std 使用 ddof=1, ic_ir 为 ic_mean / ic_std, 都不年化
+        ic_pos 是有效日期里信息系数严格大于 0 的比例
         有效日期少于 2 个时 ic_std 与 ic_ir 为 NaN
+        没有有效日期时 ic_pos 为 NaN
         标准差为 0 且均值非 0 时 ic_ir 为 inf
         均值和标准差都为 0 时 ic_ir 为 NaN
 
@@ -124,15 +127,18 @@ def ic_summary(*, ic: pd.Series) -> pd.Series:
 
     Example:
         >>> [round(v, 6) for v in ic_summary(ic=pd.Series([1.0, -1.0]))]
-        [0.0, 1.414214, 0.0]
+        [0.0, 1.414214, 0.0, 0.5]
     """
     mean = ic.mean()
     std = ic.std(ddof=1)
+    valid = ic.dropna()
+    positive = float((valid > 0).mean()) if len(valid) else np.nan
     return pd.Series(
         {
             "ic_mean": mean,
             "ic_std": std,
             "ic_ir": _mean_over_std(float(mean), float(std)),
+            "ic_pos": positive,
         },
         name="ic_summary",
     )

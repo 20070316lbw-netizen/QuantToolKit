@@ -11,7 +11,7 @@
 | --- | --- | --- | --- |
 | `ic` | 因子, 未来收益 | 每个日期的 Pearson 相关 | Series `ic` |
 | `rank_ic` | 因子, 未来收益 | 有效样本平均秩的 Pearson 相关 | Series `rank_ic` |
-| `ic_summary` | `ic` 或 `rank_ic` | 均值, `ddof=1` 标准差, 信息比率 | Series `ic_summary` |
+| `ic_summary` | `ic` 或 `rank_ic` | 均值, `ddof=1` 标准差, 信息比率, 大于 0 的比例 | Series `ic_summary` |
 | `total_return` | 简单收益 | `prod(1+r)-1` | 小数收益率 |
 | `sharpe` | 简单收益 | `mean(r)/std(r, ddof=1)` | 不年化夏普 |
 | `max_drawdown` | 简单收益 | 净值从 1 起算的最小 `净值/峰值-1` | 0 或负数 |
@@ -22,6 +22,7 @@
 两边没有交集的日期不出现。`rank_ic` 的并列取值使用平均秩。
 
 `ic_summary` 忽略无法计算的日期。有效日期少于 2 个时, 标准差和信息比率为 `NaN`。
+`ic_pos` 是有效日期里信息系数严格大于 0 的比例。没有有效日期时为 `NaN`。
 标准差为 0 且均值非 0 时, 信息比率为 `inf`; 均值和标准差都为 0 时为 `NaN`。
 信息比率不年化。
 
@@ -69,6 +70,7 @@ assert summary.name == "ic_summary"
 assert summary["ic_mean"] == 0
 assert np.isclose(summary["ic_std"], np.sqrt(2))
 assert summary["ic_ir"] == 0
+assert summary["ic_pos"] == 0.5
 
 returns = pd.Series([0.5, -0.5], index=pd.to_datetime(["2024-01-02", "2024-01-03"]))
 assert total_return(returns=returns) == -0.25

@@ -1,0 +1,10 @@
+{
+  "factor": "overnight_reversal_63",
+  "formula": "-sum(log((open[t] * adj_close[t] / close[t]) / adj_close[t-1]), 63)",
+  "selection_reason": "Best minimum Rank IC across discovery and selection among candidates positive in both periods",
+  "timing": "Chosen after seeing primary low-volatility failure in check and holdout",
+  "status": "Exploratory second look, not untouched out-of-sample confirmation",
+  "windows_or_signs_changed": false,
+  "comparison_mask": "Original eight-factor common mask, unchanged",
+  "no_further_candidate_switches": true
+}

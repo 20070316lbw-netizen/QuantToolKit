@@ -18,14 +18,18 @@
 传给 `lgb.train` 的字典只有 `objective="lambdarank"` 和种子
 学习率, 叶子数, 评价指标, `label_gain` 都不传, 使用 LightGBM 自己的默认值
 相关度标签因此必须落在 `0` 到 `30`
+`relevance_by_date` 在每个日期内把未来收益分成整数档, 默认 31 档, 收益越高档位越高
 `num_boost_round` 是 `100`, 不做早停
 
 `TrainLog` 记录一次训练的模型名, 参数字典和指标
 训练完成前 `metrics` 可以是空字典
 
 ```python
+import pandas as pd
+
 from quanttoolkit.model.lambdarank import LambdaRankParams
 from quanttoolkit.model.lightgbm import LightGBMParams
+from quanttoolkit.model.relevance import relevance_by_date
 
 params = LightGBMParams(num_leaves=15, seed=3)
 booster = params.booster_params()
@@ -41,4 +45,11 @@ assert rank_booster["objective"] == "lambdarank"
 assert "learning_rate" not in rank_booster
 assert "num_leaves" not in rank_booster
 assert rank_booster["data_random_seed"] == 3
+
+index = pd.MultiIndex.from_product(
+    [pd.to_datetime(["2024-01-02"]), ["A", "B", "C", "D"]],
+    names=["date", "ticker"],
+)
+label = pd.Series([0.1, 0.4, 0.2, 0.3], index=index)
+assert relevance_by_date(label, n_grades=4).tolist() == [0, 3, 1, 2]
 ```

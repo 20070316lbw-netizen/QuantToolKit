@@ -89,17 +89,24 @@ def test_ic_constant_cross_section_and_empty_input_stay_nan():
 def test_ic_summary_skips_missing_dates_and_zero_dispersion():
     summary = ic_summary(ic=pd.Series([1.0, np.nan, -1.0], name="ic"))
     assert summary.name == "ic_summary"
-    assert summary.index.tolist() == ["ic_mean", "ic_std", "ic_ir"]
+    assert summary.index.tolist() == ["ic_mean", "ic_std", "ic_ir", "ic_pos"]
     assert summary["ic_mean"] == 0
     assert np.isclose(summary["ic_std"], np.sqrt(2))
     assert summary["ic_ir"] == 0
+    assert summary["ic_pos"] == 0.5
 
     one = ic_summary(ic=pd.Series([0.4, np.nan]))
     assert one["ic_mean"] == 0.4
     assert np.isnan(one["ic_std"])
     assert np.isnan(one["ic_ir"])
+    assert one["ic_pos"] == 1.0
     assert ic_summary(ic=pd.Series([0.2, 0.2]))["ic_ir"] == np.inf
     assert np.isnan(ic_summary(ic=pd.Series([0.0, 0.0]))["ic_ir"])
+    assert np.isclose(
+        ic_summary(ic=pd.Series([0.0, 0.2, -0.1]))["ic_pos"],
+        1 / 3,
+    )
+    assert np.isnan(ic_summary(ic=pd.Series([np.nan], dtype=float))["ic_pos"])
 
 
 def test_return_metrics_compound_in_index_order():

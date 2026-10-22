@@ -1,6 +1,13 @@
 import json
 
-from quanttoolkit.model.lambdarank import LambdaRankParams
+import pandas as pd
+
+from quanttoolkit.model.lambdarank import (
+    LambdaRankParams,
+    fit_lambdarank,
+    group_sizes,
+    predict_scores,
+)
 from quanttoolkit.model.lightgbm import LightGBMParams
 from quanttoolkit.model.params import ModelParams, TrainLog
 
@@ -52,6 +59,41 @@ def test_lambdarank_uses_library_defaults_except_objective_and_seed(tmp_path):
     path = tmp_path / "lambdarank.json"
     params.save(path)
     assert LambdaRankParams.load(path) == params
+
+
+def test_group_sizes_follow_contiguous_dates():
+    index = pd.MultiIndex.from_tuples(
+        [
+            (pd.Timestamp("2024-01-03"), "A"),
+            (pd.Timestamp("2024-01-02"), "B"),
+            (pd.Timestamp("2024-01-02"), "A"),
+        ],
+        names=["date", "ticker"],
+    )
+    ordered = index.sort_values()
+    assert group_sizes(ordered).tolist() == [2, 1]
+    empty = pd.MultiIndex.from_arrays([[], []], names=["date", "ticker"])
+    assert group_sizes(empty).tolist() == []
+
+
+def test_fit_lambdarank_returns_finite_scores_on_the_same_index():
+    index = pd.MultiIndex.from_product(
+        [pd.to_datetime(["2024-01-03", "2024-01-02"]), ["A", "B", "C"]],
+        names=["date", "ticker"],
+    )
+    features = pd.DataFrame({"mom_21": [0.2, 0.0, 0.1, 0.1, 0.2, 0.0]}, index=index)
+    relevance = pd.Series([2, 0, 1, 0, 2, 1], index=index, name="relevance_31")
+    pred = predict_scores(
+        booster=fit_lambdarank(
+            features=features,
+            relevance=relevance,
+            params=LambdaRankParams(num_boost_round=1, seed=1),
+        ),
+        features=features.sort_index(),
+    )
+    assert pred.name == "pred"
+    assert pred.index.equals(features.sort_index().index)
+    assert pred.notna().all()
 
 
 def test_train_log_roundtrip(tmp_path):

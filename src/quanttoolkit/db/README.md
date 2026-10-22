@@ -174,10 +174,34 @@ print(written, updated, rows)  # 1 1 [('AAPL', 188.0)]
 uv run python scripts/ingest_french.py
 ```
 
+## 因子视图
+
+`factor_panel` 把 FF5 和一组钉死的日频因子放在同一张 `[date, ticker]` 视图里
+定义在 [factor_panel.sql](sql/factor_panel.sql)
+起跑日是 `prices` 的第 64 个不同交易日, 因为 `mom_63` 需要 64 条价格
+只保留这一天及之后, 并且当天要能连上 `ff5`
+晚上市的证券仍会出现, 历史不够的因子列为空
+
+| 列 | 口径 |
+| --- | --- |
+| `mkt_rf`, `smb`, `hml`, `rmw`, `cma`, `rf` | 当天的 FF5, 小数收益率 |
+| `mom_21`, `mom_63` | 与 `base_momfactor` 相同, 用 `adj_close` 的累计对数收益 |
+| `logvol_21` | 与 `base_logvolfactor` 相同, 样本标准差 `ddof=1` |
+| `overnight` | `ln(open / 前收盘)`, 当天 `volume` 为 0 时为空 |
+| `intraday` | `ln(close / open)`, 当天 `volume` 为 0 时为空 |
+| `dvol` | `ln(当天成交量 / 前一交易日成交量)`, 两天里有一天 `volume` 为 0 时为空 |
+| `rel_volume_21` | 当天成交量除以过去 21 条正成交量的均值, 窗口里有补齐日时为空 |
+
+日线没有单独的隔夜成交量, 所以隔夜只保留价格缺口, 成交量用相邻两个交易日的变化
+补齐日记的价格仍参与动量和波动率, 与 python 因子一致
+成交量因子不把 `volume = 0` 当成真实成交
+
+已有 `prices` 和 `ff_factors` 时, 在可写连接上执行 `factor_panel.sql` 即可建视图
+
 ## 本地检查
 
 ```bash
-uv run pytest -q tests/test_operation.py tests/test_wikipedia.py tests/test_price_pipeline.py tests/test_french.py
+uv run pytest -q tests/test_operation.py tests/test_wikipedia.py tests/test_price_pipeline.py tests/test_french.py tests/test_factor_panel.py
 uv run python -m doctest src/quanttoolkit/db/operation.py
 uv run ruff check src/quanttoolkit/db/operation.py scripts/ingest_universe.py tests/test_operation.py
 uv run ruff format --check src/quanttoolkit/db/operation.py scripts/ingest_universe.py tests/test_operation.py
