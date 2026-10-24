@@ -10,14 +10,16 @@ from quanttoolkit.factors.neutral import neutralize_by_industry
 from quanttoolkit.panel.returns import future_returns
 
 with get_duckdb(path=DB) as connection:
-    universe = connection.execute("SELECT ticker, name, sub_industry FROM universe ORDER BY ticker") .df()
+    universe = connection.execute(
+        "SELECT ticker, name, sub_industry FROM universe ORDER BY ticker"
+    ).df()
     prices = connection.execute(
         """
         SELECT date, ticker, adj_close, volume
         FROM prices
         ORDER BY date, ticker
         """
-        ).df()
+    ).df()
 
 industry = universe.set_index("ticker")["sub_industry"]
 # print(industry.head())
@@ -36,18 +38,14 @@ industry = universe.set_index("ticker")["sub_industry"]
 prices = prices.set_index(["date", "ticker"]).sort_index()
 
 mom = base_momfactor(prices=prices, window=63, skip=0)
-target = future_returns(df = prices, n_periods=20, gap=1)
+target = future_returns(df=prices, n_periods=20, gap=1)
 mom_frame = mom.to_frame()
 mom_neutral = neutralize_by_industry(mom_frame, industry)["mom_63"]
 
 panel = pd.concat(
-        {
-            "mom":mom,
-            "mom_neutral": mom_neutral, 
-            "target": target
-        },
-        axis=1,
-    )
+    {"mom": mom, "mom_neutral": mom_neutral, "target": target},
+    axis=1,
+)
 
 sample = panel.dropna(subset=["mom", "mom_neutral", "target"])
 
@@ -55,7 +53,7 @@ sample = panel.dropna(subset=["mom", "mom_neutral", "target"])
 # print("各列是否全部为有限数:")
 # print(np.isfinite(sample).all())
 
-daily_n = sample.groupby(level='date').size()
+daily_n = sample.groupby(level="date").size()
 # print(daily_n)
 # print(daily_n.describe())
 
@@ -79,9 +77,12 @@ def evaluate_day(day):
             "ic_raw": day["mom"].corr(day["target"], method="pearson"),
             "ic_neutral": day["mom_neutral"].corr(day["target"], method="pearson"),
             "rank_ic_raw": day["mom"].corr(day["target"], method="spearman"),
-            "rank_ic_neutral": day["mom_neutral"].corr(day["target"], method="spearman"),
+            "rank_ic_neutral": day["mom_neutral"].corr(
+                day["target"], method="spearman"
+            ),
         }
     )
+
 
 daily_ic = sample.groupby(level="date").apply(evaluate_day)
 
@@ -89,14 +90,7 @@ ic_mean = daily_ic.mean()
 ic_std = daily_ic.std(ddof=1)
 icir = ic_mean / ic_std
 
-summary = pd.concat(
-        {
-            "mean": ic_mean,
-            "std": ic_std,
-            "icir": icir
-        },
-        axis=1
-    )
+summary = pd.concat({"mean": ic_mean, "std": ic_std, "icir": icir}, axis=1)
 
 rank_ic = daily_ic["rank_ic_raw"]
 # print("Rank IC 1 期自相关: ", rank_ic.autocorr(lag=1))
@@ -123,4 +117,4 @@ nw_result = mean_model.fit(
 # print(nw_result.bse)
 
 print("平均 Rank IC 的 95% 置信区间")
-print(nw_result.conf_int(alpha = 0.05))
+print(nw_result.conf_int(alpha=0.05))

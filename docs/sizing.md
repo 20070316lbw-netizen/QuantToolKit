@@ -58,9 +58,7 @@ index = pd.MultiIndex.from_product(
 )
 score = pd.Series([9, 7, 5, 3, 20, 16, 12, 4], index=index)
 vol = pd.Series([1, 1, 1, 1, 9, 9, 9, 9], index=index)
-weights = vol_quantile_long_short(
-    score=score, vol=vol, n_vol_groups=2, n_quantiles=2
-)
+weights = vol_quantile_long_short(score=score, vol=vol, n_vol_groups=2, n_quantiles=2)
 assert weights.name == "weight"
 assert sorted(weights[weights > 0].index.get_level_values("ticker")) == [
     "A",
