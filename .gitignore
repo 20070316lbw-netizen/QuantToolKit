@@ -24,3 +24,6 @@ coverage.xml
 htmlcov/
 
 play
+
+# 函数追踪日志
+logs/

@@ -25,6 +25,7 @@ uv add "quanttoolkit @ git+https://github.com/20070316lbw-netizen/QuantToolKit.g
 | [portfolio](src/quanttoolkit/portfolio) | [调仓](docs/rebalance.md), [分位仓位](docs/sizing.md), [买入持有](docs/benchmark.md) | 已实现 |
 | [metrics](docs/metrics.md) | 截面 IC, 信息比率, 夏普与最大回撤等评定指标 | 已实现 |
 | [model](docs/model.md) | [样本](docs/dataset.md), [日期切分](docs/split.md), LightGBM 回归与 lambdarank 参数, JSON 训练日志 | 已实现 |
+| [tracelog](docs/tracelog.md) | 函数耗时, 返回值摘要与调用链 | 已实现 |
 
 标普500成员抓取到入库的完整流程见 [db 使用说明](src/quanttoolkit/db/README.md#抓取到入库)
 

@@ -31,6 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
         "metrics",
         "sizing",
         "benchmark",
+        "tracelog",
     ],
 )
 def test_offline_documentation_examples(name):
