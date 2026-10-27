@@ -1,4 +1,20 @@
+# 数据源使用说明
+
+先选数据从哪里来: Yahoo 下载行情, Wikipedia 抓当前成员, French 读取本地因子 ZIP。
+拿到后可以直接计算, 也可以按 [数据库说明](../db/README.md) 存起来。三个入口的返回格式不同, 先看下表:
+
+| 数据 | 入口 | 返回格式 | 前提 |
+| --- | --- | --- | --- |
+| Yahoo 行情 | `get_prices` | `[date, ticker]` MultiIndex DataFrame | 需要网络 |
+| 最新标普500成员 | `fetch_sp500_universe` | 普通列 DataFrame | 需要网络 |
+| Kenneth French 日频因子 | `read_french_factors` | 以 `date` 为索引的 DataFrame | 已下载官方 ZIP |
+
+仓库脚本在仓库根目录运行; 外部项目直接导入上述接口, 并传入自己的文件或数据库路径。
+完整的下游调用见 [推荐调用顺序](../../../docs/calling-guide.md)。
+
 ## Kenneth French 日频因子
+
+先下载 FF3 和 FF5 的日频压缩包。下面的命令在仓库根目录执行, 需要网络:
 
 ```bash
 curl -L -o data/ff3_daily.zip \
@@ -17,9 +33,9 @@ uv run python scripts/ingest_french.py
 脚本把两份日频因子写入 `ff_factors`, `model` 为 `ff3` 或 `ff5`
 三因子列为 `mkt_rf`, `smb`, `hml`, `rf`, 五因子再加 `rmw`, `cma`
 五因子行才有 `rmw` 和 `cma`, 三因子这两列为空
-官方文件里的数是百分数, 入库前除以 100, `0.0009` 表示 0.09%
-三因子和五因子的 `smb` 不是同一条序列, 回归时按 `model` 分开用
-`mkt_rf` 已经减去无风险利率, `rf` 是把月度国库券利率摊到每个交易日的简单收益率
+读取函数将官方百分数除以 100, 返回和入库值都是小数收益率, `0.0009` 表示 0.09%。
+三因子和五因子的 `smb` 不是同一条序列, 回归时应按 `model` 分开使用。
+`mkt_rf` 已减去无风险利率, `rf` 是日频无风险收益率。
 
 单独读取时:
 
@@ -30,8 +46,8 @@ ff3 = read_french_factors("data/ff3_daily.zip")
 ff5 = read_french_factors("data/ff5_daily.zip")
 ```
 
-返回以 `date` 为索引的 DataFrame, 按日期升序, 单位是小数收益率
-
+返回以 `date` 为索引、按日期升序的 DataFrame, 不带 ticker 层。
+读取函数只解析本地压缩包, 下载和入库分别由前面的命令和脚本完成。
 
 ## 标普500成员
 
@@ -41,8 +57,9 @@ from quanttoolkit.sources.wikipedia import fetch_sp500_universe
 universe = fetch_sp500_universe()
 ```
 
-返回普通 DataFrame, 列为 `ticker`, `name`, `sub_industry`, 按 ticker 升序排列
-`ticker` 把页面上的点号换成连字符, 如 `BRK.B` 转为 `BRK-B`
+返回普通 DataFrame, 列为 `ticker`, `name`, `sub_industry`, 按 ticker 升序排列。
+证券代码中的点号替换为连字符, 如 `BRK.B` 转为 `BRK-B`。
+它是抓取时的当前名单, 不包含历史进出记录, 不能直接当作历史时点股票池。
 
 ## 抓取到入库
 
@@ -52,19 +69,21 @@ universe = fetch_sp500_universe()
 uv run python scripts/ingest_universe.py
 ```
 
-脚本抓取最新成员, 写入 `data/quanttoolkit.db` 的 `universe` 表
-首次运行自动建表, 再次运行完整替换成员名单, 写入过程使用事务, 失败时保留原数据
-运行结束会显示抓取记录数, 入库记录数和数据库路径
+脚本抓取最新成员, 写入仓库 `data/quanttoolkit.db` 的 `universe` 表。
+首次运行自动建表, 再次运行完整替换名单, 失败时通过事务保留原数据。
+运行结束会显示抓取记录数、入库记录数和数据库路径。
 
-单独调用入库函数:
+在自己的项目中直接调用, 并显式指定自己的数据库路径。下例需要网络, 会写入数据库:
 
 ```python
-from quanttoolkit.db.connection import DB, get_duckdb
+from pathlib import Path
+
+from quanttoolkit.db.connection import get_duckdb
 from quanttoolkit.db.operation import SQL_DIR, operation_sql, read_sql
 from quanttoolkit.sources.wikipedia import fetch_sp500_universe
 
 universe = fetch_sp500_universe()
-with get_duckdb(path=DB, read_only=False) as connection:
+with get_duckdb(path=Path("data/market.db"), read_only=False) as connection:
     written = operation_sql(
         read_sql(SQL_DIR / "universe.sql"),
         read_sql(SQL_DIR / "universe_ddl.sql"),
@@ -75,9 +94,17 @@ with get_duckdb(path=DB, read_only=False) as connection:
 
 ## Yahoo 行情
 
-`from quanttoolkit.sources import get_prices` 获取 `[date, ticker]` MultiIndex 行情面板。`tickers` 接受单个字符串或证券列表,
-`start` 包含起始日期, `end` 不包含结束日期, 默认由 yfinance 决定结束时间。
-`interval` 默认 `"1d"`, `auto_adjust` 默认 `False`, 参数透传给 yfinance。
+`from quanttoolkit.sources import get_prices` 获取已排序的 `[date, ticker]` 行情面板,
+无需再次调用 `to_date_ticker_frame`。
+
+| 参数 | 默认值与含义 |
+| --- | --- |
+| `tickers` | 必填, 单个证券字符串或非空证券列表 |
+| `start` | 必填, 包含起始日期 |
+| `end` | 默认 `None`, 不包含结束日期, 未指定时由 yfinance 决定 |
+| `interval` | 默认 `"1d"`, 原样传给 yfinance |
+| `auto_adjust` | 默认 `False`, 是否由 yfinance 调整行情价格 |
+| `progress` | 默认 `True`, 显示每批下载进度 |
 
 输出通过 `to_date_ticker_frame` 转换, `date`, `ticker` 作为索引,
 数据列为 `open`, `high`, `low`, `close`, `adj_close`, `volume`, 按 `[date, ticker]` 排序。日期去掉时区并保留源数据的当地时间; 数字字段转为数值,
@@ -85,7 +112,7 @@ with get_duckdb(path=DB, read_only=False) as connection:
 
 `auto_adjust=False` 保留原始 close 和源数据提供的 adj_close; 如果源数据缺少复权价,
 adj_close 保持缺失。只有 `auto_adjust=True` 且源数据未返回 Adj Close 时, 才用已复权 close
-填充 adj_close。缺少某只证券时跳过该证券, 多证券响应缺少证券列层级时抛出 `ValueError`。
+填充 adj_close。缺少某只证券时跳过该证券, 多只证券的返回数据里没有 ticker 列层级时抛出 `ValueError`。
 证券列表应非空, 下载调用抛出的异常继续传播。
 
 ### 下载进度
@@ -103,29 +130,38 @@ prices = get_prices(
 )
 ```
 
-证券较多时按每批 40 只下载, 每批最多 4 个线程, 各批共用一个 Yahoo 会话, 批与批之间稍作停顿.
-进度按该批已处理的 ticker 数量推进, 包含失败任务, 不表示全部抓取成功.
-进度条只覆盖下载阶段, 不包括后续清洗和入库.
+证券较多时按每批 40 只下载, 首次下载每批最多 4 个线程, 各批共用一个 Yahoo 会话,
+每批之间稍作停顿。进度按该批已处理的 ticker 数量推进, 包含失败任务,
+覆盖下载阶段, 不包括清洗和入库。
 
-整段 `close` 都缺失的证券会再下载两次, 第二次起改为逐只下载. Yahoo 限流时, yfinance 常把空结果写成 `possibly delisted`, 重试就是为了把这些仍在交易的证券补回来. 多次下载后仍然没有 `close` 的证券会跳过, 并留下警告. 只缺一段时间的记录(例如上市前)会删掉这些行, 不会因此重下整段行情.
+整段 `close` 缺失的证券最多再下载两次, 重试时逐只下载。
+限流也可能使 yfinance 输出 `possibly delisted`, 仅凭这条提示不能认定证券已退市。
+多次下载后仍没有 `close` 的证券会被跳过并记录警告。
+仅部分日期缺失时, 删除这些缺失行, 不重下整段行情。
 
 ### 下载、入库与计算
 
-下面的示例需要网络, 在仓库根目录执行。日行情入库应使用 `interval="1d"`,
-因为数据库的 date 为 SQL DATE, 不保留日内时间。写入前用 `fill_price_gaps` 补齐每只证券首尾之间、其他证券已有成交而它缺失的交易日, 价格沿用前一条记录, volume 写 0。上市前和最后一条行情之后不补, 日历只用数据里已经出现的日期, 不用自然日。下载结果可直接用于价格计算, 写入数据库时用 `.reset_index()` 转为 `prices` 表对应的长表。
+下面的示例需要网络, 会写入自己项目下的 `data/market.db`。
+顺序是下载 → 补齐内部缺行 → 转成长表入库 → 读回面板 → 计算。
+
+日行情入库应使用 `interval="1d"`, 因为数据库的 date 为 SQL DATE, 不保留日内时间。
+`fill_price_gaps` 只补每只证券首尾记录之间、输入共同日历中已有的日期,
+新增行沿用此前可用价格, volume 为 0。上市前和末条记录之后不补, 已有行中的 NaN 也不修补。
+是否补齐要自己决定, 具体规则见 [数据约定](../../../docs/data-structure.md)。
 
 ```python
+from pathlib import Path
+
 from quanttoolkit.db import SQL_DIR, get_duckdb, operation_sql, read_sql
-from quanttoolkit.db.connection import DB
 from quanttoolkit.panel.prices import fill_price_gaps
 from quanttoolkit.panel.returns import historical_return
-from quanttoolkit.sources import get_prices
 from quanttoolkit.panel.transfer import to_date_ticker_frame
+from quanttoolkit.sources import get_prices
 
 prices = fill_price_gaps(
     get_prices("AAPL", start="2024-01-01", end="2024-02-01", progress=False)
 )
-with get_duckdb(path=DB, read_only=False) as connection:
+with get_duckdb(path=Path("data/market.db"), read_only=False) as connection:
     written = operation_sql(
         read_sql(SQL_DIR / "prices.sql"),
         read_sql(SQL_DIR / "prices_ddl.sql"),

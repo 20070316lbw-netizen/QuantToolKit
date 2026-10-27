@@ -1,4 +1,4 @@
-# Python-generated files
+# Python 运行和构建时生成的文件
 __pycache__/
 *.py[oc]
 build/
@@ -6,7 +6,7 @@ dist/
 wheels/
 *.egg-info
 
-# Virtual environments
+# 本地虚拟环境
 .venv
 
 .DS_Store
@@ -16,7 +16,7 @@ wheels/
 *.zip
 *.db
 
-# Local data downloads and coverage reports
+# 本地下载的数据和测试覆盖率报告
 /data/company_tickers.json
 .coverage
 .coverage.*

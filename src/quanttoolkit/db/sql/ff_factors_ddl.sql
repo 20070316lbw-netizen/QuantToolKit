@@ -4,8 +4,8 @@ CREATE TABLE IF NOT EXISTS ff_factors(
     mkt_rf DOUBLE,
     smb DOUBLE,
     hml DOUBLE,
-    rmw DOUBLE,                -- 仅 ff5
-    cma DOUBLE,                -- 仅 ff5
+    rmw DOUBLE,                -- 只有 ff5 有值
+    cma DOUBLE,                -- 只有 ff5 有值
     rf DOUBLE,
     PRIMARY KEY(model, date)
 )

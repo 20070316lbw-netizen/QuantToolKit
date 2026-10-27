@@ -1,4 +1,4 @@
-"""读取 Kenneth French 日频因子压缩包"""
+"""读取本地 Kenneth French 日频因子 ZIP, 把百分数转成小数收益率"""
 
 from __future__ import annotations
 

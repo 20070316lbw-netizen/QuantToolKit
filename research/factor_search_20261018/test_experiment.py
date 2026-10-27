@@ -1,4 +1,4 @@
-"""验证研究公式的复权口径, 时间因果性与标签边界"""
+"""检查研究公式的复权口径, 是否读取未来行情, 以及标签的起止位置"""
 
 import importlib.util
 from pathlib import Path

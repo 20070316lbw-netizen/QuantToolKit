@@ -1,4 +1,4 @@
-"""按共同交易日历选择调仓日, 并映射每个日期所属的调仓区间"""
+"""从共同交易日历选调仓日, 再标记每一天属于哪次调仓"""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def rebalance_dates(dates: pd.DatetimeIndex, freq: int) -> pd.DatetimeIndex:
 
     Returns:
         升序 DatetimeIndex, 保留索引名、时区和日期精度
-        选择第 0、freq、2*freq 条日期, 不补齐缺失交易日
+        选择第 0, freq, 2*freq 条日期, 不补齐缺失交易日
         空输入返回空索引; freq 超过日历长度时只返回首日
 
     Raises:
@@ -62,6 +62,6 @@ def rebalance_dates_belong(dates: pd.DatetimeIndex, freq: int) -> pd.Series:
         return pd.Series(index=calendar, dtype=calendar.dtype, name="rebalance_date")
 
     selected = calendar[::freq]
-    # 右侧插入点让调仓日自身归入新区间, 非调仓日沿用最近已发生的起点
+    # 从右侧找插入位置, 让调仓日自己开启新区间, 其余日期沿用最近一次调仓日
     positions = selected.searchsorted(calendar, side="right") - 1
     return pd.Series(selected[positions], index=calendar, name="rebalance_date")

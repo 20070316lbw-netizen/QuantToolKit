@@ -1,4 +1,4 @@
-"""基于 [date, ticker] 行情的逐证券收益率计算"""
+"""在每只证券内计算历史收益, 未来收益标签和单期对数收益"""
 
 from __future__ import annotations
 
@@ -91,7 +91,7 @@ def log_returns(
     df: pd.DataFrame,
     price_col: str = "adj_close",
 ) -> pd.Series:
-    """计算按 ticker 隔离的单期对数收益率
+    """在每只证券内计算相邻两条价格的对数收益率
 
     Args:
         df: [date, ticker] MultiIndex DataFrame, 含 price_col 列, 键非空且唯一

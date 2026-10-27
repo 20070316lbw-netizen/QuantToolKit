@@ -1,4 +1,8 @@
-"""因子截面相关与收益序列的基本评定指标"""
+"""先看因子与未来收益的关系, 再评估已经算好的组合收益
+
+ic 和 rank_ic 在同一天的股票之间计算相关, ic_summary 再汇总每日结果
+total_return, sharpe, max_drawdown 和 win_rate 使用组合的单期简单收益
+"""
 
 from __future__ import annotations
 
@@ -47,7 +51,7 @@ def ic(*, factor: pd.Series, forward_return: pd.Series) -> pd.Series:
     Args:
         factor: [date, ticker] Series, 因子值, 不修改输入
         forward_return: [date, ticker] Series, 与因子按索引对齐的未来简单收益率
-            通常来自 future_returns, 含有未来数据, 只用于事后评定
+            通常来自 future_returns, 含有未来数据, 只用于事后评估
 
     Returns:
         按 date 升序的 Series, name 为 ic
@@ -79,7 +83,7 @@ def rank_ic(*, factor: pd.Series, forward_return: pd.Series) -> pd.Series:
     Args:
         factor: [date, ticker] Series, 因子值, 不修改输入
         forward_return: [date, ticker] Series, 与因子按索引对齐的未来简单收益率
-            通常来自 future_returns, 含有未来数据, 只用于事后评定
+            通常来自 future_returns, 含有未来数据, 只用于事后评估
 
     Returns:
         按 date 升序的 Series, name 为 rank_ic
@@ -106,7 +110,7 @@ def rank_ic(*, factor: pd.Series, forward_return: pd.Series) -> pd.Series:
 
 
 def ic_summary(*, ic: pd.Series) -> pd.Series:
-    """汇总信息系数序列的均值, 样本标准差和信息比率
+    """把每日 IC 汇总成均值, 标准差, ICIR 和正值比例
 
     Args:
         ic: 按日期索引的 ic 或 rank_ic

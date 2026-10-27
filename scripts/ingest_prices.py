@@ -1,4 +1,4 @@
-"""按 universe 下载日行情并写入 prices"""
+"""按 universe 的股票名单下载日行情, 补齐内部缺行后写入 prices"""
 
 from __future__ import annotations
 

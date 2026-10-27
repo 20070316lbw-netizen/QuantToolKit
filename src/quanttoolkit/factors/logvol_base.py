@@ -1,4 +1,4 @@
-"""对数波动率因子的基础函数"""
+"""计算过去一段时间里对数收益的波动"""
 
 from __future__ import annotations
 

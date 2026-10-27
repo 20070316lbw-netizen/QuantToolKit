@@ -1,4 +1,4 @@
-"""写入 prices 前, 补齐行情面板里的缺失交易日"""
+"""写入 prices 前, 补上每只证券首尾记录之间缺少的交易日"""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import pandas as pd
 
 
 def fill_price_gaps(prices: pd.DataFrame) -> pd.DataFrame:
-    """按已有交易日补齐每只证券首尾之间的缺失行情
+    """按已有日历补齐内部缺行, 价格沿用前值, 成交量记为 0
 
     Args:
         prices: [date, ticker] MultiIndex DataFrame, 不修改输入

@@ -1,8 +1,10 @@
 # 波动率
 
 实现见 [volatility.py](../src/quanttoolkit/panel/volatility.py), 输入格式见 [数据约定](data-structure.md)。
-接口仅接受关键词参数, 返回排序后的 `[date, ticker]` 命名 `Series`。
+调用时写出参数名, 返回按 `[date, ticker]` 排序并带有名称的 `Series`。
 默认价格列是 `close`; 要使用复权价格, 显式传 `price_col="adj_close"`。
+想看过去波动有多大, 用历史波动率, 它也能交给 [波动率分层仓位](sizing.md)。
+想让模型预测之后的波动, 再用未来波动率生成标签。
 
 ## 接口与区间
 
@@ -14,7 +16,7 @@
 | `forward_volatility` | `window=21, gap=1` | `std(r[t+gap+1], ..., r[t+gap+window])` | `forward_volatility_{window}_gap_{gap}` |
 
 均使用样本标准差 `ddof=1`, 单位为小数波动率, 不做年化。
-`window` 为收益率数量, 至少为 2; 计算一个窗口需要 `window+1` 个连续有效价格。
+`window` 数的是收益率, 至少为 2; 算出一个窗口需要 `window+1` 个连续有效价格。
 `gap` 为从基准记录到区间起点价格的距离, 为非负整数。
 参数按整数传入, 不额外校验参数。
 
@@ -30,7 +32,7 @@
 ## 缺失值
 
 窗口内任何价格缺失都会使相关单期收益缺失, 整个窗口返回 `NaN`。
-不前向填补、不忽略缺失收益来缩短窗口。完整有效窗口恢复后会重新得到结果。
+不前向填补、不忽略缺失收益来缩短窗口。后面重新凑够完整的有效窗口时, 就能继续得到结果。
 基准日价格不在未来持有区间内时, 该价格缺失不会影响该标签。
 常数收益窗口的波动率为 0, 空输入返回命名的空 `Series`。
 
@@ -55,12 +57,13 @@ prices = to_date_ticker_frame(
 historical = history_vol(df=prices, window=2, price_col="adj_close")
 future = forward_volatility(df=prices, window=2, gap=1, price_col="adj_close")
 
-# 历史窗口在第三条记录使用 0.1 和 -0.1。
+# 历史窗口在第三条记录使用 0.1 和 -0.1
 assert np.isclose(historical.iloc[2], 0.2 / np.sqrt(2))
-# 基准日未来窗口使用 -0.1 和 0.2。
+# 基准日未来窗口使用 -0.1 和 0.2
 assert np.isclose(future.iloc[0], 0.3 / np.sqrt(2))
 assert future.iloc[-3:].isna().all()
 print(pd.concat([historical, future], axis=1))
 ```
 
-样本标准差口径与 [pandas Rolling.std](https://pandas.pydata.org/docs/reference/api/pandas.api.typing.Rolling.std.html) 一致。
+`history_vol` 计算简单收益率的波动, [base_logvolfactor](factors.md#对数波动率)
+计算对数收益率的波动, 两者口径不同。两者均使用样本标准差 `ddof=1`, 不年化。

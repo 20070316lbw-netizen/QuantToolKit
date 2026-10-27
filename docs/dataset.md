@@ -1,22 +1,34 @@
 # 训练样本
 
-实现见 [dataset.py](../src/quanttoolkit/model/dataset.py)
+实现见 [dataset.py](../src/quanttoolkit/model/dataset.py)。
+`assemble_samples` 把两类信息拼在一起: 特征是基准日已经知道的东西, 标签是之后发生的结果。
+先算 [因子特征](factors.md) 和 [未来收益标签](returns.md), 再按索引对齐, 就得到离线训练用的样本表。
 
-`assemble_samples` 把特征面板和一条未来收益标签对齐成监督学习样本
-索引是 `[date, ticker]`
-特征列在前, 标签列在最后, 列名沿用标签 Series 的 `name`
-标签用 [`future_returns`](returns.md), 名字是 `forward_return_{n_periods}_gap_{gap}`
+## 输入与输出
 
-标签必须有 `name`, 且不能与特征列同名
-两侧索引名必须都是 `[date, ticker]`, `(date, ticker)` 不能重复
-只保留每个特征列和标签都有值的行
-只出现在特征或标签一侧的 `(date, ticker)` 不进入结果
-不填补缺失值, 不修改输入
-没有完整样本时, 返回保留列名和索引名的空 DataFrame
+| 对象 | 格式与约定 |
+| --- | --- |
+| `features` | `[date, ticker]` DataFrame, 每列一个特征 |
+| `label` | 同类索引的 Series, 必须有 `name`, 且不能与特征列同名 |
+| 返回值 | 按索引升序的 DataFrame, 特征列在前, 标签列在最后 |
 
-除最后一列以外的列是 LightGBM 的特征, 最后一列是要预测的持有期收益
-切分用 [`split_dates`](split.md), `embargo` 取标签的 `gap + n_periods`
-先组装, 再按 `train`, `valid`, `test` 取行
+两边的索引名要相同, 都使用 `[date, ticker]`, 索引键不能重复。
+标签通常来自 `future_returns`, 列名为 `forward_return_{n_periods}_gap_{gap}`。
+只留下两边都存在, 而且每个特征和标签都有值的行, 不修改输入或填补缺失值。
+没有完整样本时, 返回保留列名和索引名的空 DataFrame。
+
+## 与日期切分衔接
+
+先用完整行情日历调用 [`split_dates`](split.md), 再按日期从组装结果中取出 `train`, `valid`, `test`。
+日历不能只取删去缺失样本后剩余的日期。未来收益标签通常需要 `embargo=gap+n_periods`,
+证券缺行时使用 `label_end_dates(prices.index, n_periods=..., gap=...)` 生成实际标签结束日期,
+再交给 [`split_samples`](split.md#直接切分样本) 排除跨段行。
+
+训练时先把最后一列取出来作标签, 剩下的列才作为特征交给模型, 避免把答案也放进输入里。
+实际预测时只需准备相同列名和顺序的特征, 无需等待未来标签。
+完整示例见 [模型调用顺序](calling-guide.md#加模型时-从因子面板另开一条分支)。
+
+## 可独立运行的示例
 
 ```python
 import pandas as pd

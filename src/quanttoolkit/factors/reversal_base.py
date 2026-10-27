@@ -1,4 +1,4 @@
-"""反转因子生成函数的基础函数"""
+"""把动量取负, 得到同一窗口的反转因子"""
 
 from __future__ import annotations
 

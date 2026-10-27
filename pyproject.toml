@@ -1,7 +1,7 @@
 [project]
 name = "quanttoolkit"
 version = "0.1.0"
-description = "Add your description here"
+description = "个人量化研究里复用的数据与计算工具"
 readme = "README.md"
 authors = [
     { name = "20070316lbw-netizen", email = "lbw20070316lbw@outlook.com" }

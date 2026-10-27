@@ -1,4 +1,4 @@
-"""基于 (date, ticker) MultiIndex DataFrame 的波动率计算"""
+"""在每只证券内计算简单收益的历史波动率和未来波动率标签"""
 
 from __future__ import annotations
 

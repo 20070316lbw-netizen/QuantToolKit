@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install uv
-        # 上游 v8 起不再发布 v10 这样的主版本标签, 只能写全版本号
+        # 固定完整版本号, 让每次 CI 使用同一版安装工具
         uses: astral-sh/setup-uv@v10.2.0
         with:
           python-version: "3.12"

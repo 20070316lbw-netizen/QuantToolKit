@@ -1,6 +1,10 @@
+import numpy as np
 import pandas as pd
+import pytest
 
-from quanttoolkit.model.split import split_dates
+from quanttoolkit.model.dataset import label_end_dates
+from quanttoolkit.model.split import split_dates, split_samples
+from quanttoolkit.panel.returns import future_returns
 
 
 def test_split_purges_tails_and_sorts_unique_dates():
@@ -69,3 +73,67 @@ def test_empty_calendar_retains_timezone_precision_and_name():
         result,
         pd.Series(index=dates, dtype="object", name="split"),
     )
+
+
+def test_split_samples_removes_sparse_labels_crossing_both_boundaries():
+    dates = pd.bdate_range("2024-01-01", periods=12, name="date")
+    complete = pd.MultiIndex.from_product([dates, ["A"]], names=["date", "ticker"])
+    sparse = pd.MultiIndex.from_product(
+        [dates[[0, 1, 5, 6, 10, 11]], ["B"]], names=["date", "ticker"]
+    )
+    prices = pd.DataFrame(
+        {"adj_close": np.arange(18) + 10.0}, index=complete.append(sparse)
+    )
+    label = future_returns(df=prices, n_periods=1, gap=1)
+    ends = label_end_dates(prices.index, n_periods=1, gap=1)
+    samples = label.dropna().to_frame().assign(x=1).sample(frac=1, random_state=3)
+    original = samples.copy()
+    parts = split_samples(
+        samples=samples,
+        dates=dates,
+        label_end=ends,
+        train_end=dates[4],
+        valid_end=dates[9],
+        embargo=2,
+    )
+    assert (dates[0], "B") not in parts["train"].index
+    assert (dates[5], "B") not in parts["valid"].index
+    assert len(parts["train"]) == 3
+    assert len(parts["valid"]) == 3
+    for role, boundary in (("train", dates[4]), ("valid", dates[9])):
+        assert ends.reindex(parts[role].index).le(boundary).all()
+        assert parts[role].index.is_monotonic_increasing
+    assert parts["test"].empty
+    pd.testing.assert_frame_equal(samples, original)
+
+
+def test_split_samples_excludes_unknown_dates_and_missing_ends():
+    dates = pd.bdate_range("2024-01-01", periods=8, tz="Asia/Shanghai", name="date")
+    index = pd.MultiIndex.from_product([dates, ["A"]], names=["date", "ticker"])
+    samples = pd.DataFrame({"x": 1}, index=index)
+    ends = label_end_dates(index, n_periods=1, gap=0).drop(index[0])
+    parts = split_samples(
+        samples=samples,
+        dates=dates[1:],
+        label_end=ends,
+        train_end=dates[3],
+        valid_end=dates[5],
+        embargo=0,
+    )
+    assert len(parts["train"]) == 2
+    assert len(parts["valid"]) == 1
+    assert len(parts["test"]) == 1
+
+
+@pytest.mark.parametrize(
+    "embargo,train,valid",
+    [(-1, "2024-01-01", "2024-01-02"), (0, "2024-01-02", "2024-01-01")],
+)
+def test_invalid_split_boundaries_raise(embargo, train, valid):
+    with pytest.raises(ValueError):
+        split_dates(
+            pd.bdate_range("2024-01-01", periods=3),
+            train_end=train,
+            valid_end=valid,
+            embargo=embargo,
+        )

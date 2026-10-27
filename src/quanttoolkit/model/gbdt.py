@@ -1,4 +1,12 @@
-"""基于平方误差的简化 GBDT 回归器"""
+"""用多棵回归树逐轮修正预测, 得到简化的 GBDT 回归器
+
+先从全 0 预测开始, 再让下一棵树学习当前还没预测对的部分
+每棵树的输出乘以学习率 lr, 然后加到已有预测上
+
+先创建 SimpleGBDT, 再调用 fit(X, y)
+需要挑选轮数时, 在 fit 中传入 X_val, y_val 和 early_stopping_rounds
+训练完成后用 predict(X_test) 预测
+"""
 
 import numpy as np
 
@@ -10,6 +18,14 @@ class SimpleGBDT:
 
     初始预测为 0, 每棵树的输出乘以学习率后累加
     提供验证集时, 训练结束后保留验证 MSE 最低的一轮
+
+    参数分别控制:
+        n_trees: 最多训练多少棵树, 默认 100
+        max_depth: 每棵树的最大深度, 默认 3
+        lr: 每棵树的输出乘多少再加进预测, 默认 0.1
+        min_samples_split: 节点至少有多少样本才能继续分裂, 默认 2
+        min_samples_leaf: 每个叶子至少留下多少样本, 默认 1
+        lambda_l2: 叶子权重的 L2 正则, 用来约束修正幅度, 默认 0
     """
 
     def __init__(
@@ -133,7 +149,7 @@ class SimpleGBDT:
                     break
 
         if use_val:
-            self.trees = self.trees[:self.best_iteration]
+            self.trees = self.trees[: self.best_iteration]
 
         self._fitted = True
         return self

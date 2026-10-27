@@ -1,4 +1,4 @@
-"""抓取 Wikipedia 上最新的标普500成员名单"""
+"""从 Wikipedia 抓取当前标普500成员, 整理成 universe 需要的三列"""
 
 from io import StringIO
 from urllib.request import Request, urlopen
@@ -11,7 +11,7 @@ __all__ = ["fetch_sp500_universe"]
 def fetch_sp500_universe() -> pd.DataFrame:
     """抓取最新成员名单, 返回符合 universe 表 DDL 的数据
 
-    Wikipedia 请求超时为15秒
+    请求最多等待 15 秒
 
     Returns:
         pd.DataFrame: RangeIndex, 按 ticker 升序排列
@@ -21,7 +21,7 @@ def fetch_sp500_universe() -> pd.DataFrame:
 
     Raises:
         urllib.error.URLError: 页面请求失败
-        TimeoutError: 请求超过15秒
+        TimeoutError: 请求超过 15 秒
         ValueError: 页面没有当前成员表或 HTML 解析失败
         KeyError: 当前成员表缺少使用的列
 

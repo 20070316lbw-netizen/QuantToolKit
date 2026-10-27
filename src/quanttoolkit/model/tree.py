@@ -1,4 +1,8 @@
-"""普通回归树与梯度提升树共用的建树逻辑"""
+"""普通回归树和 GBDT 共用的建树方法
+
+RegressionTree.fit 直接用标签训练一棵树
+SimpleGBDT 则逐轮传入当前损失的梯度和海森, 复用同一套分裂与叶子计算
+"""
 
 import numpy as np
 
@@ -42,8 +46,7 @@ class RegressionTree:
         return 0.5 * (
             g_left**2 / (h_left + self.lambda_l2)
             + g_right**2 / (h_right + self.lambda_l2)
-            - (g_left + g_right) ** 2
-            / (h_left + h_right + self.lambda_l2)
+            - (g_left + g_right) ** 2 / (h_left + h_right + self.lambda_l2)
         )
 
     def _best_split(self, X, g, h):
@@ -120,7 +123,7 @@ class RegressionTree:
         return node
 
     def _fit_gradients(self, X, g, h):
-        # GBDT 每轮传入当前损失的梯度和海森
+        # GBDT 每轮传进来的是当前损失的梯度和海森, 再用它们计算分裂和叶子权重
         self.n_leaves = 0
         self.root = self._build_tree(X, g, h, depth=0)
         return self

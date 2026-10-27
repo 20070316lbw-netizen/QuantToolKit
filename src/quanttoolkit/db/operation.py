@@ -1,8 +1,8 @@
-"""在事务中执行写入 SQL
+"""把建表和写入放在同一次事务里执行
 
-建表语句和写入语句放在同一次事务里
-SQL 文件位于 SQL_DIR
-语句里的 df 使用本函数的同名参数
+先用 read_sql 读取 SQL_DIR 下的语句, 再交给 operation_sql
+写入成功就提交, 失败就回滚, 避免只写进去一部分
+SQL 中的 df 对应 operation_sql 传入的 DataFrame
 """
 
 from __future__ import annotations

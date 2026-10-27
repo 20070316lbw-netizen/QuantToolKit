@@ -1,4 +1,4 @@
-"""模型参数与训练日志的 JSON 读写"""
+"""把模型参数和训练记录存成 JSON, 需要时再读回来"""
 
 from __future__ import annotations
 

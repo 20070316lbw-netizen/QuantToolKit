@@ -1,4 +1,4 @@
-"""Yahoo 数据抓取"""
+"""从 Yahoo 下载行情, 清洗后返回 [date, ticker] 面板"""
 
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ from quanttoolkit.panel.transfer import to_date_ticker_frame
 
 DateLike = str | date | datetime
 
-# 一次并发拉取几百只股票时, Yahoo 会返回空行情. yfinance 把这种情况记成
-# possibly delisted, 但证券本身通常仍在交易. 缩小批次和线程数, 并重试整段缺失的代码.
+# 一次并发下载几百只股票时, Yahoo 可能返回空行情, yfinance 会把它记成
+# possibly delisted, 先缩小批次和线程数, 再重试整段缺失的证券
 _CHUNK_SIZE = 40
 _DOWNLOAD_THREADS = 4
 _MAX_ATTEMPTS = 3
@@ -58,9 +58,9 @@ def get_prices(
     Args:
         tickers: 单个 ticker 或 ticker 列表, 如 "AAPL" 或 ["AAPL", "MSFT"]
         start: 起始日期(含), 如 "2020-01-01"
-        end: 结束日期(不含); 默认到今天(由 yfinance 决定)
-        interval: yfinance 支持的周期, 如 "1d"/"1wk"/"1mo"
-        auto_adjust: 透传给 yfinance; True 时 yfinance 直接返回复权价并可能
+        end: 结束日期, 不含当天, 默认 None, 结束范围由 yfinance 决定
+        interval: 行情周期, 默认 "1d", 也可传 yfinance 支持的 "1wk" 或 "1mo"
+        auto_adjust: 原样传给 yfinance; True 时 yfinance 直接返回复权价并可能
             丢弃 Adj Close 列, False(默认)保留原始 close 与 adj_close 两列
         progress: 是否显示 yfinance 下载进度条, 默认 True, 仅限关键词传入
             证券较多时分批下载, 每批各有一条进度条
@@ -213,7 +213,7 @@ def _split_prices(
 def _clean_single(
     df: pd.DataFrame, ticker: str, auto_adjust: bool = False
 ) -> pd.DataFrame:
-    """把 yfinance 单 ticker 的宽表整理成标准长表 schema"""
+    """把 yfinance 返回的单只证券行情整理成标准长表"""
     df = df.rename(columns=_COLUMN_MAP)
     df = df.reset_index().rename(columns={"Date": "date", "Datetime": "date"})
     df["date"] = pd.to_datetime(df["date"])

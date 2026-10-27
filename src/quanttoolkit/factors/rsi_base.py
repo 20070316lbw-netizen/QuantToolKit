@@ -1,4 +1,4 @@
-"""RSI 因子的基础函数"""
+"""用平均上涨和平均下跌计算 Wilder RSI"""
 
 from __future__ import annotations
 

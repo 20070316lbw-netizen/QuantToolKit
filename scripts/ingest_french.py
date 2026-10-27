@@ -1,4 +1,4 @@
-"""读取 data 下的 FF3 与 FF5 日频压缩包, 写入 ff_factors"""
+"""先读取 data 下的 FF3 和 FF5 日频 ZIP, 再一起写入 ff_factors"""
 
 from pathlib import Path
 

@@ -1,4 +1,4 @@
-"""读取边界: 将长表转换为标准 (date, ticker) MultiIndex DataFrame"""
+"""把含 date 和 ticker 列的长表转成计算使用的 [date, ticker] 面板"""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import pandas as pd
 
 
 def to_date_ticker_frame(*, df: pd.DataFrame) -> pd.DataFrame:
-    """将时序长表转换为 [date, ticker] MultiIndex DataFrame
+    """把 date 和 ticker 列设为索引, 得到 [date, ticker] 面板
 
     Args:
         df: 普通索引 DataFrame, 必需列为 date 和 ticker, 无默认值

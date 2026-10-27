@@ -24,15 +24,15 @@ with get_duckdb(path=DB) as connection:
 industry = universe.set_index("ticker")["sub_industry"]
 # print(industry.head())
 
-# # 每个 ticker 应只对应一条行业记录，行业标签也不能缺失
+# 每个 ticker 只对应一条行业记录, 行业标签也不能缺失
 
-# # 1. 检查 ticker 是否唯一
+# 先检查 ticker 是否唯一
 # print("ticker 是否唯一: ", industry.index.is_unique)
 
-# # 2. 检查行业是否有缺失
+# 再检查行业标签有没有缺失
 # print("行业缺失数量", industry.isna().sum())
 
-# # 3. 检查是否有内容为空字符串
+# 空字符串也单独看一下
 # print("行业空字符串数量", industry.eq("").sum())
 
 prices = prices.set_index(["date", "ticker"]).sort_index()

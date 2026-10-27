@@ -1,4 +1,4 @@
-"""按日期截面把因子面板标准化为 z-score"""
+"""在同一天的股票之间计算 z-score, 统一各因子的尺度"""
 
 from __future__ import annotations
 

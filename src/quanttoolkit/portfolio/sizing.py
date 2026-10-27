@@ -1,4 +1,4 @@
-"""按分数构造多空分位权重"""
+"""按当天分数选出高低两组, 构造等权多空仓位"""
 
 from __future__ import annotations
 

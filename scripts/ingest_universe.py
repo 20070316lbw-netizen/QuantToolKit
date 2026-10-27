@@ -1,4 +1,4 @@
-"""抓取最新标普500成员并写入 DuckDB"""
+"""抓取当前标普500成员, 再替换 DuckDB 里的 universe 名单"""
 
 from pathlib import Path
 

@@ -1,18 +1,29 @@
-# db
+# 数据库连接与写入
 
-提供 DuckDB 连接和事务写入, 支持最新标普500成员名单的 `universe` 表, 日行情的 `prices` 表, 以及 Kenneth French 日频因子的 `ff_factors` 表
+先打开 DuckDB 连接, 再读取数据, 或把建表和写入放进同一次事务执行。
+数据从哪里来, 见 [数据源说明](../sources/USAGE.md); 读出来后怎么计算, 见 [推荐调用顺序](../../../docs/calling-guide.md)。
 
-| 文件 | 接口 | 职责 |
+| 文件 | 接口 | 做什么 |
 | --- | --- | --- |
 | [connection.py](connection.py) | `get_duckdb(*, path, read_only=True)` | 打开数据库, 默认只读 |
-| [connection.py](connection.py) | `DB` | 默认数据库路径 `data/quanttoolkit.db` |
-| [operation.py](operation.py) | `read_sql(path)` | 读取 `sql` 目录中的语句 |
+| [connection.py](connection.py) | `DB` | 按本包所在位置推导的 `data/quanttoolkit.db` |
+| [operation.py](operation.py) | `read_sql(sql)` | 读取 SQL 文件文本 |
 | [operation.py](operation.py) | `operation_sql(sql, ddl, connection, df=None)` | 在事务中先建表再写入, 返回最后一条语句的计数 |
 | [sql](sql) | `*_ddl.sql`, `*.sql` | 建表语句和写入语句 |
 
+`DB` 供本仓库脚本使用, 不会自动指向依赖项目的数据目录。
+外部项目调用 `get_duckdb` 时应显式传入自己的路径。
+
+| 数据对象 | 关键字段 | 再次写入时的行为 |
+| --- | --- | --- |
+| `universe` | `ticker`, `name`, `sub_industry` | 清空后替换完整名单 |
+| `prices` | 主键 `(ticker, date)` | 同键整行替换, 新键追加 |
+| `ff_factors` | 主键 `(model, date)` | 清空后替换本次全部因子 |
+| `factor_panel` | `date`, `ticker` + 固定因子列 | 视图, 随底层表查询结果变化 |
+
 ## SQL 文件
 
-语句都在 [sql](sql) 目录, 由 `SQL_DIR` 定位
+语句都在 [sql](sql) 目录, 由 `SQL_DIR` 定位。
 
 | 文件 | 作用 |
 | --- | --- |
@@ -22,9 +33,10 @@
 | `prices.sql` | 按 `(ticker, date)` 新增或整行替换日行情 |
 | `ff_factors_ddl.sql` | 创建 `ff_factors`, 主键为 `(model, date)` |
 | `ff_factors.sql` | 清空后按列名写入 FF3 与 FF5 日频因子 |
+| `factor_panel.sql` | 创建或替换日频因子视图 |
 
-写入语句里的 `df` 指向 `operation_sql` 的同名参数
-DuckDB 只在执行 `execute` 的函数里查找这个名字, 所以 DataFrame 必须传给 `operation_sql`, 不能只放在调用方的局部变量里
+写入语句中的 `df` 由 `operation_sql` 的同名参数提供,
+调用时把 DataFrame 传进去, 函数先建表再写入, 成功就提交, 失败就回滚。
 
 ## universe 表
 
@@ -34,8 +46,8 @@ DuckDB 只在执行 `execute` 的函数里查找这个名字, 所以 DataFrame �
 | `name` | VARCHAR | Wikipedia 成员表中的公司名称 |
 | `sub_industry` | VARCHAR | Wikipedia 成员表中的 GICS 子行业 |
 
-数据源返回普通 DataFrame, 三个字段作为普通列, 按 ticker 升序排列
-`universe` 保存最近一次写入的完整成员名单
+数据源返回普通 DataFrame, 三个字段作为普通列, 按 ticker 升序排列。
+`universe` 保存最近一次写入的完整成员名单, 不保留成员变更历史。
 
 ## 抓取到入库
 
@@ -51,10 +63,14 @@ uv run python scripts/ingest_universe.py
 
 ## 读取数据库
 
-```python
-from quanttoolkit.db.connection import DB, get_duckdb
+下面假定自己的 `data/market.db` 已有 `universe` 表, 只读查询不会创建数据库:
 
-with get_duckdb(path=DB) as connection:
+```python
+from pathlib import Path
+
+from quanttoolkit.db.connection import get_duckdb
+
+with get_duckdb(path=Path("data/market.db")) as connection:
     members = connection.execute("SELECT * FROM universe ORDER BY ticker").df()
 
 print(members.head())
@@ -62,7 +78,9 @@ print(members.head())
 
 `get_duckdb` 默认 `read_only=True`, 数据库不存在时抛出 `FileNotFoundError`
 使用 `read_only=False` 可创建数据库及父目录, 连接由调用方通过 `with` 或 `close()` 关闭
-建表由 `operation_sql` 在写入事务里执行
+建表由 `operation_sql` 在写入事务里执行。
+行情查询得到的普通长表还需用 `to_date_ticker_frame(df=raw)` 转为计算面板,
+静态成员名单保留普通列即可。
 
 ## 单独写入成员名单
 
@@ -93,6 +111,7 @@ with duckdb.connect(":memory:") as connection:
     )
     stored = connection.execute("SELECT COUNT(*) FROM universe").fetchone()[0]
 
+assert written == stored == 1
 print(written, stored)  # 1 1
 ```
 
@@ -157,6 +176,8 @@ with duckdb.connect(":memory:") as connection:
     )
     rows = connection.execute("SELECT ticker, close FROM prices").fetchall()
 
+assert written == updated == 1
+assert rows == [("AAPL", 188.0)]
 print(written, updated, rows)  # 1 1 [('AAPL', 188.0)]
 ```
 
@@ -176,11 +197,13 @@ uv run python scripts/ingest_french.py
 
 ## 因子视图
 
-`factor_panel` 把 FF5 和一组钉死的日频因子放在同一张 `[date, ticker]` 视图里
-定义在 [factor_panel.sql](sql/factor_panel.sql)
-起跑日是 `prices` 的第 64 个不同交易日, 因为 `mom_63` 需要 64 条价格
-只保留这一天及之后, 并且当天要能连上 `ff5`
-晚上市的证券仍会出现, 历史不够的因子列为空
+`factor_panel` 将 FF5 与固定的一组日频价格、成交量因子放在同一视图中,
+定义见 [factor_panel.sql](sql/factor_panel.sql)。SQL 查询结果仍是普通长表,
+经过 `to_date_ticker_frame` 才得到 `[date, ticker]` MultiIndex。
+
+视图从 `prices` 的第 64 个不同交易日起保留记录, 并要求当天有 FF5 数据。
+从这一天开始, 是因为 `mom_63` 至少需要 64 条价格。不过各只证券的历史不一定一样长:
+较晚上市或历史不足的证券仍可出现, 对应因子列为空。
 
 | 列 | 口径 |
 | --- | --- |
@@ -190,13 +213,15 @@ uv run python scripts/ingest_french.py
 | `overnight` | `ln(open / 前收盘)`, 当天 `volume` 为 0 时为空 |
 | `intraday` | `ln(close / open)`, 当天 `volume` 为 0 时为空 |
 | `dvol` | `ln(当天成交量 / 前一交易日成交量)`, 两天里有一天 `volume` 为 0 时为空 |
-| `rel_volume_21` | 当天成交量除以过去 21 条正成交量的均值, 窗口里有补齐日时为空 |
+| `rel_volume_21` | 当天成交量除以含当天的最近 21 条记录成交量均值, 窗口必须完整且 volume 非空、非零 |
 
-日线没有单独的隔夜成交量, 所以隔夜只保留价格缺口, 成交量用相邻两个交易日的变化
-补齐日记的价格仍参与动量和波动率, 与 python 因子一致
-成交量因子不把 `volume = 0` 当成真实成交
+隔夜因子使用 `open` 与前条 `close`, 日内因子使用 `close/open`, 二者使用行情的 OHLC 口径。
+动量和对数波动率使用 `adj_close`, 与 Python 基础因子保持一致。
+补齐价格仍参与价格窗口, `volume=0` 会转为缺失, 不进入完整的成交量窗口。
+FF5 在同一天对所有证券相同, 这几列是市场时间序列, 不提供当天的证券截面差异。
 
-已有 `prices` 和 `ff_factors` 时, 在可写连接上执行 `factor_panel.sql` 即可建视图
+已有 `prices` 和 `ff_factors` 时, 在可写连接上执行 `factor_panel.sql` 即可创建视图。
+查询视图时会按底层表重新得到结果, 不用把这些计算值再存一份。
 
 ## 本地检查
 

@@ -1,4 +1,4 @@
-"""把未来收益收成 lambdarank 可用的整数相关度"""
+"""把每天的未来收益分成整数档, 交给 LambdaRank 学习股票排序"""
 
 from __future__ import annotations
 

@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from quanttoolkit.model.dataset import assemble_samples
+from quanttoolkit.model.dataset import assemble_samples, label_end_dates
 
 
 def _index():
@@ -122,3 +122,15 @@ def test_label_column_name_cannot_duplicate_a_feature():
     label = pd.Series([0.01], index=index, name="mom_2")
     with pytest.raises(KeyError, match="mom_2"):
         assemble_samples(features=features, label=label)
+
+
+def test_label_end_tracks_each_security_record_and_preserves_timezone(price_panel):
+    ends = label_end_dates(price_panel.index, n_periods=1, gap=1)
+    assert ends.loc[("2024-01-02", "A")] == pd.Timestamp("2024-01-05")
+    assert ends.loc[("2024-01-02", "B")] == pd.Timestamp("2024-01-09")
+    assert ends.loc[("2024-01-05", "B")] is pd.NaT
+    assert ends.index.equals(price_panel.sort_index().index)
+    dates = pd.bdate_range("2024-01-01", periods=3, tz="Asia/Shanghai")
+    index = pd.MultiIndex.from_product([dates, ["A"]], names=["date", "ticker"])
+    assert label_end_dates(index, n_periods=1, gap=0).iloc[0] == dates[1]
+    assert label_end_dates(index[:0]).empty
