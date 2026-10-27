@@ -1,7 +1,8 @@
 """记录函数跑了多久, 返回什么, 以及先后调用了谁
 
 在自己的步骤函数上加 @trace, 终端和 logs/trace.log 就会同时输出记录
-日志路径相对当前工作目录, 其他模块的日志不会写进这个文件
+默认日志路径相对当前工作目录, 可用 configure_log 改到其他位置
+其他模块的日志不会写进这个文件
 导入本模块时不会创建日志文件
 """
 
@@ -24,7 +25,7 @@ _DEFAULT_MAX_ROWS = 5
 _REPR_LIMIT = 200
 _TRACE_MARK = "tracelog"
 
-__all__ = ["clear_log", "print_call_chain", "trace"]
+__all__ = ["clear_log", "configure_log", "print_call_chain", "trace"]
 
 
 class _Node:
@@ -228,15 +229,47 @@ def trace(
     return decorate
 
 
+def configure_log(path: str | Path) -> Path:
+    """设置后续追踪记录和调用链的文件位置, 保留已有文件内容
+
+    Args:
+        path: 日志文件路径, 支持 str 或 Path, 展开用户目录符号
+            相对路径以当前工作目录为准
+
+    Returns:
+        Path: 设置后的日志路径, 父目录不存在时自动创建
+        后续 @trace, print_call_chain 和 clear_log() 都使用这个位置
+
+    Raises:
+        OSError: 日志目录无法创建
+
+    Example:
+        >>> import tempfile
+        >>> from pathlib import Path
+        >>> previous = _LOG_PATH
+        >>> with tempfile.TemporaryDirectory() as directory:
+        ...     target = Path(directory) / "logs" / "trace.log"
+        ...     configure_log(target) == target
+        True
+        >>> configure_log(previous) == previous
+        True
+    """
+    global _LOG_PATH
+    target = Path(path).expanduser()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    _LOG_PATH = target
+    return target
+
+
 def clear_log(path: str | Path | None = None) -> Path:
     """清空日志文件, 不存在时创建空文件
 
     适合放在脚本顶部, 避免和上一次运行的记录混在一起
-    默认清空当前工作目录下的 logs/trace.log
+    默认清空当前追踪文件, 初始位置为工作目录下的 logs/trace.log
     这个函数只动磁盘文件, 不挂上日志 sink
 
     Args:
-        path: 要清空的文件, 默认 logs/trace.log
+        path: 要清空的文件, 默认使用 configure_log 设置的位置
 
     Returns:
         被清空的文件路径

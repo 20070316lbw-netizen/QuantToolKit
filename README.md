@@ -36,7 +36,17 @@ uv add "quanttoolkit @ git+https://github.com/20070316lbw-netizen/QuantToolKit.g
 | [model](docs/model.md) | [样本组装](docs/dataset.md), [日期切分](docs/split.md), LightGBM 参数与排序训练, 手写回归树, 简化 GBDT, JSON 训练日志 |
 | [tracelog](docs/tracelog.md) | 函数耗时, 返回值摘要与调用链 |
 
-首次准备本地数据, 见 [数据源说明](src/quanttoolkit/sources/USAGE.md) 和 [数据库说明](src/quanttoolkit/db/README.md)。
+首次准备数据, 可以直接调用:
+
+```python
+from quanttoolkit.data_pipeline import main
+
+main(logger_path="logs", data_path="data")
+```
+
+自动获取名单, 行情和 French 因子, 写入数据库并建立因子视图
+参数省略时使用当前工作目录下的 `logs/` 和 `data/`, 见 [数据准备](docs/data-pipeline.md)
+单独调用各步骤, 见 [数据源说明](src/quanttoolkit/sources/USAGE.md) 和 [数据库说明](src/quanttoolkit/db/README.md)
 
 ## 许可证
 

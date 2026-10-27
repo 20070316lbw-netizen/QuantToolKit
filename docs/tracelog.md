@@ -9,20 +9,24 @@
 | 接口 | 用途 |
 | --- | --- |
 | `@trace` / `@trace(max_rows=5)` | 记录被装饰函数的耗时和返回值摘要 |
+| `configure_log(path)` | 设置后续追踪文件的位置, 保留已有内容 |
 | `clear_log(path=None)` | 清空指定日志文件, 默认 `logs/trace.log` |
 | `print_call_chain()` | 打印并返回当前调用链文本 |
 
 `@trace` 在函数返回后写一条记录, 内容是函数全名、耗时和返回值摘要。
 进程结束时自动打印一棵调用链, 里面只有挂了装饰器的函数。
-终端和当前工作目录下的 `logs/trace.log` 同时输出, 文件按追加写入。
+终端和当前追踪文件同时输出, 初始位置为工作目录下的 `logs/trace.log`, 文件按追加写入
 文件输出单独挂在 loguru 上, 只接收带追踪标记的记录, 其他模块的 logger 不会写进来。
 第一次追踪时才开始写文件, 导入模块时不会创建日志。
 
 ## 用法
 
-在脚本顶部调用 `clear_log()`, 把上一次的 `logs/trace.log` 清成空文件。
+需要改位置时调用 `configure_log("my_logs/trace.log")`, 父目录自动创建
+设置会持续用于后面的追踪记录, 调用链和不带参数的 `clear_log()`
+
+在脚本顶部调用 `clear_log()`, 把上一次的追踪文件清成空文件
 文件不存在时会连目录一起创建, 已有内容会被清空。
-传入 `path` 时清空该文件并返回路径, 不会改变追踪记录默认写入 `logs/trace.log` 的位置。
+传入 `path` 时只清空该文件并返回路径, 不改变追踪记录的位置
 
 `@trace` 和 `@trace(max_rows=10)` 都可以。
 `max_rows` 默认 5, 控制 DataFrame 预览行数, 以及 Series 和 ndarray 预览的元素个数。

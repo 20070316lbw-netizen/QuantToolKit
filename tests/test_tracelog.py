@@ -7,7 +7,7 @@ import pytest
 from loguru import logger
 
 from quanttoolkit import tracelog
-from quanttoolkit.tracelog import clear_log, print_call_chain, trace
+from quanttoolkit.tracelog import clear_log, configure_log, print_call_chain, trace
 
 _ELAPSED = r"[0-9]+\.[0-9]{2}s"
 
@@ -15,6 +15,7 @@ _ELAPSED = r"[0-9]+\.[0-9]{2}s"
 @pytest.fixture(autouse=True)
 def isolated_tracelog(monkeypatch, tmp_path):
     tracelog._reset()
+    monkeypatch.setattr(tracelog, "_LOG_PATH", Path("logs/trace.log"))
     monkeypatch.chdir(tmp_path)
     yield
     tracelog._reset()
@@ -234,6 +235,26 @@ def test_other_logger_output_stays_out_of_trace_log():
     assert "来自现有模块的记录" not in log
     assert "装饰之前的记录" not in log
     assert "装饰之后的记录" not in log
+
+
+def test_configure_log_routes_existing_sink_and_clear_log(tmp_path):
+    @trace
+    def step():
+        return "数据准备"
+
+    step()
+    original = _read_log()
+    target = tmp_path / "custom/trace.log"
+    assert configure_log(target) == target
+    assert not target.exists()
+    step()
+    text = print_call_chain()
+    written = target.read_text()
+    assert "数据准备" in written
+    assert text in written
+    assert _read_log() == original
+    assert clear_log() == target
+    assert target.read_text() == ""
 
 
 def test_idle_tracer_does_not_create_log_or_print(capsys):
