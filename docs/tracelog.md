@@ -9,6 +9,7 @@
 | 接口 | 用途 |
 | --- | --- |
 | `@trace` / `@trace(max_rows=5)` | 记录被装饰函数的耗时和返回值摘要 |
+| `@trace(log_return=False)` | 仍计入调用链, 正常返回时不写返回值日志 |
 | `configure_log(path)` | 设置后续追踪文件的位置, 保留已有内容 |
 | `clear_log(path=None)` | 清空指定日志文件, 默认 `logs/trace.log` |
 | `print_call_chain()` | 打印并返回当前调用链文本 |
@@ -30,6 +31,9 @@
 
 `@trace` 和 `@trace(max_rows=10)` 都可以。
 `max_rows` 默认 5, 控制 DataFrame 预览行数, 以及 Series 和 ndarray 预览的元素个数。
+`@trace(log_return=False)` 让这个函数正常返回时不写返回值日志。
+调用链里仍有它, 包含耗时和单行简述。抛出异常时仍写异常日志。
+它可以和 `max_rows` 一起写, 例如 `@trace(max_rows=2, log_return=False)`。
 `@trace` 可用于包装依赖项目自己的数据准备、因子计算和模型训练步骤, 包内函数不会自动全部被追踪。
 装饰器通过 `functools.wraps` 保留函数名字和文档。
 

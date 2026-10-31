@@ -201,6 +201,7 @@ def _call(
     kwargs: dict[str, Any],
     *,
     max_rows: int,
+    log_return: bool,
 ) -> Any:
     global _chain_dirty
     _ensure_sink()
@@ -231,18 +232,22 @@ def _call(
         elapsed = time.perf_counter() - started
         node.elapsed = elapsed
         node.summary = _brief(result)
-        detail = _detail(result, max_rows=max_rows)
-        # 容器展开后从下一行开始, 避免表格首行粘在 "返回" 后面
-        gap = (
-            "\n" if "\n" in detail and isinstance(result, (dict, list, tuple)) else " "
-        )
-        _log.info(
-            "{} 耗时 {} 返回{}{}",
-            fn.__qualname__,
-            _format_seconds(elapsed, 4),
-            gap,
-            detail,
-        )
+        # 关闭时调用链仍保留这个函数, 只是不写返回值那条日志
+        if log_return:
+            detail = _detail(result, max_rows=max_rows)
+            # 容器展开后从下一行开始, 避免表格首行粘在 "返回" 后面
+            gap = (
+                "\n"
+                if "\n" in detail and isinstance(result, (dict, list, tuple))
+                else " "
+            )
+            _log.info(
+                "{} 耗时 {} 返回{}{}",
+                fn.__qualname__,
+                _format_seconds(elapsed, 4),
+                gap,
+                detail,
+            )
         return result
     finally:
         _stack.reset(token)
@@ -252,11 +257,13 @@ def trace(
     func: Callable[..., Any] | None = None,
     *,
     max_rows: int = _DEFAULT_MAX_ROWS,
+    log_return: bool = True,
 ) -> Callable[..., Any]:
     """装饰函数, 记录耗时, 返回值摘要和调用链
 
     不带参数时写 @trace
     需要限制预览长度时写 @trace(max_rows=10)
+    只要调用链, 不写返回值时写 @trace(log_return=False)
 
     函数正常返回后写一条日志, 内容是函数全名, 耗时和返回值摘要
     DataFrame 记录形状, 列名和前几行
@@ -264,13 +271,16 @@ def trace(
     dict, list, tuple 里含有 DataFrame 或 Series 时, 每个键或下标单独成段
     其他对象记录截断到 200 个字符的 repr
     调用链上的简述保持单行, 嵌套表格只写形状
+    log_return 为 False 时跳过返回值日志, 调用链仍保留这个函数, 耗时和单行简述
 
     函数抛出异常时记录异常和耗时, 然后原样重新抛出
+    log_return 为 False 时, 异常日志仍会写
     调用关系放在 contextvars 里, 用来在退出时打印调用链
 
     Args:
         func: 被装饰的函数, 由 @trace 自动传入
         max_rows: 预览的行数或元素个数, 默认 5
+        log_return: 正常返回后是否写返回值日志, 默认 True
 
     Returns:
         装饰后的函数
@@ -284,7 +294,7 @@ def trace(
     def decorate(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            return _call(fn, args, kwargs, max_rows=max_rows)
+            return _call(fn, args, kwargs, max_rows=max_rows, log_return=log_return)
 
         return wrapper
 

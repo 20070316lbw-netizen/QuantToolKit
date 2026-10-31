@@ -115,6 +115,54 @@ def test_container_of_frames_is_logged_on_separate_lines():
     assert "(DataFrame(2, 1), Series(2,))" in pair_line
 
 
+def test_log_return_false_skips_return_log_and_keeps_call_chain():
+    @trace(log_return=False)
+    def load_prices():
+        """不写返回值"""
+        return pd.DataFrame({"close": [1.0, 2.0]})
+
+    @trace
+    def main():
+        load_prices()
+        return "done"
+
+    assert main() == "done"
+    assert load_prices.__name__ == "load_prices"
+    assert load_prices.__doc__ == "不写返回值"
+    log = _read_log()
+    assert "main" in log
+    assert "done" in log
+    assert "load_prices" not in log
+    assert "close" not in log
+
+    text = print_call_chain()
+    lines = text.splitlines()
+    assert re.fullmatch(rf"main  \({_ELAPSED}\) -> 'done'", lines[1])
+    assert re.fullmatch(
+        rf"└── load_prices  \({_ELAPSED}\) -> DataFrame\(2, 1\)",
+        lines[2],
+    )
+
+
+def test_log_return_false_still_records_exceptions():
+    @trace(log_return=False)
+    def child():
+        raise ValueError("价格缺失")
+
+    with pytest.raises(ValueError, match="价格缺失"):
+        child()
+
+    log = _read_log()
+    assert "child" in log
+    assert "ValueError: 价格缺失" in log
+    lines = print_call_chain().splitlines()
+    assert lines[0] == "调用链:"
+    assert re.fullmatch(
+        rf"child  \({_ELAPSED}\) -> ValueError: 价格缺失",
+        lines[1],
+    )
+
+
 def test_plain_mapping_stays_on_one_line():
     @trace
     def flags():
