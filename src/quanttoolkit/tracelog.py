@@ -233,7 +233,9 @@ def _call(
         node.summary = _brief(result)
         detail = _detail(result, max_rows=max_rows)
         # 容器展开后从下一行开始, 避免表格首行粘在 "返回" 后面
-        gap = "\n" if "\n" in detail and isinstance(result, (dict, list, tuple)) else " "
+        gap = (
+            "\n" if "\n" in detail and isinstance(result, (dict, list, tuple)) else " "
+        )
         _log.info(
             "{} 耗时 {} 返回{}{}",
             fn.__qualname__,

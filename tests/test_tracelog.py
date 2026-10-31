@@ -109,7 +109,9 @@ def test_container_of_frames_is_logged_on_separate_lines():
     assert "DataFrame(2, 1)" in split_line
     assert "Series(2,)" in split_line
     assert "mom_5" not in split_line
-    assert "{'train': DataFrame(2, 1), 'valid': Series(2,), 'note': 'plain'}" in split_line
+    assert (
+        "{'train': DataFrame(2, 1), 'valid': Series(2,), 'note': 'plain'}" in split_line
+    )
     assert "(DataFrame(2, 1), Series(2,))" in pair_line
 
 
