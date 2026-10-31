@@ -56,6 +56,33 @@ def _truncate(text: str) -> str:
     return f"{text[:_REPR_LIMIT]}..."
 
 
+def _contains_table(value: Any) -> bool:
+    # 容器里的表格如果直接 repr, 多行内容会粘在键名后面, 再被截断
+    if isinstance(value, (pd.DataFrame, pd.Series)):
+        return True
+    if isinstance(value, dict):
+        return any(_contains_table(item) for item in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(_contains_table(item) for item in value)
+    return False
+
+
+def _indent(text: str) -> str:
+    return "  " + text.replace("\n", "\n  ")
+
+
+def _key_label(key: Any) -> str:
+    if isinstance(key, str):
+        return key
+    return repr(key)
+
+
+def _single_line(text: str) -> str:
+    if "\n" not in text:
+        return text
+    return " ".join(part.strip() for part in text.splitlines() if part.strip())
+
+
 def _brief(value: Any) -> str:
     if isinstance(value, pd.DataFrame):
         return f"DataFrame{value.shape}"
@@ -63,7 +90,22 @@ def _brief(value: Any) -> str:
         return f"Series{value.shape}"
     if isinstance(value, np.ndarray):
         return f"ndarray{value.shape}"
-    return _truncate(repr(value))
+    if isinstance(value, (dict, list, tuple)) and _contains_table(value):
+        return _truncate(_brief_container(value))
+    return _truncate(_single_line(repr(value)))
+
+
+def _brief_container(value: Any) -> str:
+    if isinstance(value, dict):
+        parts = [f"{key!r}: {_brief(item)}" for key, item in value.items()]
+        return "{" + ", ".join(parts) + "}"
+    parts = [_brief(item) for item in value]
+    if isinstance(value, list):
+        return "[" + ", ".join(parts) + "]"
+    body = ", ".join(parts)
+    if len(value) == 1:
+        body += ","
+    return "(" + body + ")"
 
 
 def _brief_exception(exc: BaseException) -> str:
@@ -82,7 +124,21 @@ def _detail(value: Any, *, max_rows: int) -> str:
         # 按行展开后取前几项, 和 max_rows 的预览长度对齐
         head = value.reshape(-1)[:max_rows].tolist()
         return f"ndarray shape={value.shape} dtype={value.dtype} head={head}"
+    if isinstance(value, (dict, list, tuple)) and _contains_table(value):
+        return _detail_container(value, max_rows=max_rows)
     return _truncate(repr(value))
+
+
+def _detail_container(value: Any, *, max_rows: int) -> str:
+    if isinstance(value, dict):
+        items = [(_key_label(key), item) for key, item in value.items()]
+    else:
+        items = [(f"[{index}]", item) for index, item in enumerate(value)]
+    blocks = [
+        f"{label}:\n{_indent(_detail(item, max_rows=max_rows))}"
+        for label, item in items
+    ]
+    return "\n\n".join(blocks)
 
 
 def _append_text(text: str) -> None:
@@ -175,11 +231,15 @@ def _call(
         elapsed = time.perf_counter() - started
         node.elapsed = elapsed
         node.summary = _brief(result)
+        detail = _detail(result, max_rows=max_rows)
+        # 容器展开后从下一行开始, 避免表格首行粘在 "返回" 后面
+        gap = "\n" if "\n" in detail and isinstance(result, (dict, list, tuple)) else " "
         _log.info(
-            "{} 耗时 {} 返回 {}",
+            "{} 耗时 {} 返回{}{}",
             fn.__qualname__,
             _format_seconds(elapsed, 4),
-            _detail(result, max_rows=max_rows),
+            gap,
+            detail,
         )
         return result
     finally:
@@ -199,7 +259,9 @@ def trace(
     函数正常返回后写一条日志, 内容是函数全名, 耗时和返回值摘要
     DataFrame 记录形状, 列名和前几行
     Series 与 ndarray 记录形状, dtype 和前几项
+    dict, list, tuple 里含有 DataFrame 或 Series 时, 每个键或下标单独成段
     其他对象记录截断到 200 个字符的 repr
+    调用链上的简述保持单行, 嵌套表格只写形状
 
     函数抛出异常时记录异常和耗时, 然后原样重新抛出
     调用关系放在 contextvars 里, 用来在退出时打印调用链

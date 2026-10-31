@@ -73,6 +73,57 @@ def test_return_summaries_cover_frame_series_array_and_object():
     assert "ndarray(2, 2)" in text
 
 
+def test_container_of_frames_is_logged_on_separate_lines():
+    index = pd.MultiIndex.from_tuples(
+        [("2024-01-02", "A"), ("2024-01-03", "A")],
+        names=["date", "ticker"],
+    )
+    train = pd.DataFrame({"mom_5": [0.1, 0.2]}, index=index)
+    valid = pd.Series([0.3, 0.4], index=index, name="score")
+
+    @trace(max_rows=1)
+    def split_sample():
+        return {"train": train, "valid": valid, "note": "plain"}
+
+    @trace(max_rows=1)
+    def pair():
+        return (train, valid)
+
+    split_sample()
+    pair()
+    log = _read_log()
+
+    assert "返回\ntrain:\n" in log
+    assert "\n\nvalid:\n" in log
+    assert "DataFrame shape=(2, 1)" in log
+    assert "Series shape=(2,)" in log
+    assert "plain" in log
+    assert "{'train':" not in log
+    assert "2024-01-03" not in log
+    assert "[0]:\n" in log
+    assert "\n\n[1]:\n" in log
+
+    text = print_call_chain()
+    split_line = next(line for line in text.splitlines() if "split_sample" in line)
+    pair_line = next(line for line in text.splitlines() if line.startswith("pair"))
+    assert "DataFrame(2, 1)" in split_line
+    assert "Series(2,)" in split_line
+    assert "mom_5" not in split_line
+    assert "{'train': DataFrame(2, 1), 'valid': Series(2,), 'note': 'plain'}" in split_line
+    assert "(DataFrame(2, 1), Series(2,))" in pair_line
+
+
+def test_plain_mapping_stays_on_one_line():
+    @trace
+    def flags():
+        return {"ok": True, "name": "alpha"}
+
+    flags()
+    log = _read_log()
+    line = next(line for line in log.splitlines() if "flags" in line)
+    assert "{'ok': True, 'name': 'alpha'}" in line
+
+
 def test_exception_is_recorded_and_reraised():
     sentinel = ValueError("价格缺失")
 

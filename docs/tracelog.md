@@ -48,9 +48,11 @@
 | DataFrame | 形状, 列名, 前 `max_rows` 行 | `DataFrame(行, 列)` |
 | Series | 形状, dtype, 前 `max_rows` 项 | `Series(长度,)` |
 | ndarray | 形状, dtype, 按行展开后的前 `max_rows` 项 | `ndarray` 加形状 |
+| dict, list, tuple 中含 DataFrame 或 Series | 每个键或下标单独成段, 段与段之间空一行, 段内再按上表展开 | 单行摘要, 表格只保留形状 |
 | 其他对象 | 截断到 200 个字符的 repr | 同样的截断 repr |
 
-调用链每个节点显示函数名, 耗时和上面的简述。
+含有表格的 dict, list, tuple 按键或下标分段写入, 每段再展开成上面的表格预览。
+调用链每个节点显示函数名, 耗时和上面的简述, 嵌套表格只保留形状。
 耗时包含该函数内部的子调用。
 下面是一棵树的样子, 耗时会随机器变化:
 
