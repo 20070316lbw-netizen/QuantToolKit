@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from quanttoolkit.panel.transfer import prepare_price_panel
+
 
 @pytest.fixture
 def price_panel():
@@ -23,4 +25,4 @@ def price_panel():
     panel["close"] = panel["adj_close"] * np.where(
         panel.index.get_level_values("ticker") == "A", 2.0, 3.0
     )
-    return panel
+    return prepare_price_panel(panel)

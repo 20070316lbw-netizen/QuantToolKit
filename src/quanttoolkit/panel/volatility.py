@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from quanttoolkit.panel.returns import historical_return
+from quanttoolkit.panel.returns import _historical_return
+from quanttoolkit.registry import _contract
 
 
 def _rolling_vol(returns: pd.Series, window: int) -> pd.Series:
@@ -15,6 +16,7 @@ def _rolling_vol(returns: pd.Series, window: int) -> pd.Series:
     )
 
 
+@_contract
 def history_vol(
     *,
     df: pd.DataFrame,
@@ -24,7 +26,8 @@ def history_vol(
     """计算历史日简单收益率的滚动波动率
 
     Args:
-        df: [date, ticker] MultiIndex DataFrame, 含 price_col 列, 键非空且唯一
+        df: 已登记的 [date, ticker] DataFrame, 含 price_col 列, 键非空且唯一
+            外部面板用 prepare_price_panel 接入
         window: 窗口内收益率数量, 默认 21, 至少为 2 的整数
             期数按每只股票自己的交易记录计数
         price_col: 价格列名, 默认 close, 非缺失价格须为正数
@@ -36,22 +39,24 @@ def history_vol(
         窗口不足或窗口内收益率缺失时为 NaN, 空输入返回空 Series
 
     Raises:
+        ValueError: 面板未经过行情准备或价格数据无效
         KeyError: price_col 指定的列或 ticker 索引层不存在
-        ValueError: pandas 不接受指定的滚动窗口
 
     Example:
+        >>> from quanttoolkit.panel.transfer import prepare_price_panel
         >>> index = pd.MultiIndex.from_product(
         ...     [pd.date_range("2024-01-01", periods=3), ["A"]],
         ...     names=["date", "ticker"],
         ... )
-        >>> prices = pd.DataFrame({"close": [1., 2., 4.]}, index=index)
+        >>> prices = prepare_price_panel(pd.DataFrame({"close": [1., 2., 4.]}, index=index))
         >>> float(history_vol(df=prices, window=2).iloc[-1])
         0.0
     """
-    returns = historical_return(df=df, n_periods=1, price_col=price_col)
+    returns = _historical_return(df[price_col], n_periods=1)
     return _rolling_vol(returns, window).rename(f"volatility_{window}")
 
 
+@_contract
 def forward_volatility(
     *,
     df: pd.DataFrame,
@@ -62,7 +67,8 @@ def forward_volatility(
     """计算未来持有区间内的波动率标签
 
     Args:
-        df: [date, ticker] MultiIndex DataFrame, 含 price_col 列, 键非空且唯一
+        df: 已登记的 [date, ticker] DataFrame, 含 price_col 列, 键非空且唯一
+            外部面板用 prepare_price_panel 接入
         window: 持有区间的单期收益率数量, 默认 21, 至少为 2 的整数
         gap: 基准日到区间起点的记录数, 默认 1, 非负整数
             期数按每只股票自己的交易记录计数
@@ -77,19 +83,20 @@ def forward_volatility(
         使用未来数据, 仅用于事后生成标签
 
     Raises:
+        ValueError: 面板未经过行情准备或价格数据无效
         KeyError: price_col 指定的列或 ticker 索引层不存在
-        ValueError: pandas 不接受指定的滚动窗口
 
     Example:
+        >>> from quanttoolkit.panel.transfer import prepare_price_panel
         >>> index = pd.MultiIndex.from_product(
         ...     [pd.date_range("2024-01-01", periods=3), ["A"]],
         ...     names=["date", "ticker"],
         ... )
-        >>> prices = pd.DataFrame({"close": [1., 2., 4.]}, index=index)
+        >>> prices = prepare_price_panel(pd.DataFrame({"close": [1., 2., 4.]}, index=index))
         >>> float(forward_volatility(df=prices, window=2, gap=0).iloc[0])
         0.0
     """
-    returns = historical_return(df=df, n_periods=1, price_col=price_col)
+    returns = _historical_return(df[price_col], n_periods=1)
     volatility = _rolling_vol(returns, window)
     return (
         volatility.groupby(level="ticker", sort=False)

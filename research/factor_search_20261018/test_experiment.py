@@ -8,6 +8,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 
 from quanttoolkit.panel.returns import future_returns
+from quanttoolkit.panel.transfer import prepare_price_panel
 
 SPEC = importlib.util.spec_from_file_location(
     "factor_experiment", Path(__file__).with_name("experiment.py")
@@ -88,7 +89,9 @@ def test_research_labels_match_package_calculation():
     p = prices()
     actual, _ = experiment._label_and_mask(p, experiment._make_factors(p))
     panel = p["adj_close"].stack().to_frame("adj_close")
-    expected = future_returns(df=panel, n_periods=21, gap=1).unstack("ticker")
+    expected = future_returns(
+        df=prepare_price_panel(panel), n_periods=21, gap=1
+    ).unstack("ticker")
     assert_frame_equal(actual, expected)
 
 

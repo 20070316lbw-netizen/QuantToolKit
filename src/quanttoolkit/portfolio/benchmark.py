@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import pandas as pd
 
+from quanttoolkit.registry import _contract
 
+
+@_contract
 def equal_weight_hold(
     *,
     prices: pd.DataFrame,

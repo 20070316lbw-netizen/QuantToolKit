@@ -61,6 +61,7 @@ def test_database_documentation_examples(section):
         "metrics",
         "sizing",
         "benchmark",
+        "registry",
         "tracelog",
     ],
 )

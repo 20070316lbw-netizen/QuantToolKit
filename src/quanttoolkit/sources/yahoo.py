@@ -10,6 +10,7 @@ import pandas as pd
 from loguru import logger
 
 from quanttoolkit.panel.transfer import to_date_ticker_frame
+from quanttoolkit.registry import _contract
 
 DateLike = str | date | datetime
 
@@ -44,6 +45,7 @@ _OUTPUT_COLUMNS = [
 _NUMERIC_COLUMNS = ["open", "high", "low", "close", "adj_close", "volume"]
 
 
+@_contract
 def get_prices(
     tickers: str | Sequence[str],
     start: DateLike,

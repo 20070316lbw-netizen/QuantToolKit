@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 
 from quanttoolkit.panel.returns import future_returns, historical_return, log_returns
+from quanttoolkit.panel.transfer import prepare_price_panel
 from quanttoolkit.panel.volatility import forward_volatility, history_vol
 
 CALCULATIONS = [
@@ -17,7 +18,7 @@ CALCULATIONS = [
 @pytest.mark.parametrize("calculation", CALCULATIONS)
 def test_empty_missing_and_timezone_inputs(calculation, price_panel):
     empty = price_panel.iloc[:0]
-    result = calculation(df=empty)
+    result = calculation(df=prepare_price_panel(empty))
     assert isinstance(result, pd.Series)
     assert result.empty and result.dtype == np.dtype("float64")
     assert result.index.equals(empty.index)
@@ -25,7 +26,7 @@ def test_empty_missing_and_timezone_inputs(calculation, price_panel):
 
     missing = price_panel.copy()
     missing["close"] = missing["adj_close"] = np.nan
-    assert calculation(df=missing).isna().all()
+    assert calculation(df=prepare_price_panel(missing)).isna().all()
 
     zoned = price_panel.copy()
     zoned.index = pd.MultiIndex.from_arrays(
@@ -35,4 +36,6 @@ def test_empty_missing_and_timezone_inputs(calculation, price_panel):
         ],
         names=["date", "ticker"],
     )
-    assert calculation(df=zoned).index.equals(zoned.sort_index().index)
+    assert calculation(df=prepare_price_panel(zoned)).index.equals(
+        zoned.sort_index().index
+    )

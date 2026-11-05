@@ -5,8 +5,10 @@ from __future__ import annotations
 import pandas as pd
 
 from quanttoolkit.factors.mom_base import base_momfactor
+from quanttoolkit.registry import _contract
 
 
+@_contract
 def base_reversalfactor(
     prices: pd.DataFrame,
     window: int,

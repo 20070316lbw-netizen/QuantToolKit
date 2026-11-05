@@ -59,7 +59,9 @@ def test_equal_weight_hold_missing_price_breaks_the_next_return():
 def test_equal_weight_hold_empty_input():
     empty = pd.DataFrame(
         columns=["adj_close"],
-        index=pd.MultiIndex.from_arrays([[], []], names=["date", "ticker"]),
+        index=pd.MultiIndex.from_arrays(
+            [pd.DatetimeIndex([]), []], names=["date", "ticker"]
+        ),
     )
     held = equal_weight_hold(prices=empty)
     assert held.empty

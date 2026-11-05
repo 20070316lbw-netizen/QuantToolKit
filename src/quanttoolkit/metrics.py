@@ -9,6 +9,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from quanttoolkit.registry import _contract
+
 
 def _cross_sectional_corr(
     factor: pd.Series,
@@ -45,6 +47,53 @@ def _mean_over_std(mean: float, std: float) -> float:
     return float(mean / std)
 
 
+@_contract
+def prepare_portfolio_returns(returns: pd.Series) -> pd.Series:
+    """接入外部回测的组合单期简单收益, 用于净值和回撤图
+
+    Args:
+        returns: 非空的 DatetimeIndex Series, 日期唯一, 小数收益有限且无缺失
+            调用方负责保证收益来自连续、非重叠的组合持有期
+
+    Returns:
+        登记后的 Series, 保留索引和数值
+
+    Raises:
+        TypeError: 输入不是日期索引 Series
+        ValueError: 日期或数值无效, 或输入是已登记的不兼容产物
+
+    Example:
+        >>> dates = pd.date_range("2024-01-01", periods=2)
+        >>> prepare_portfolio_returns(pd.Series([0.1, -0.05], index=dates)).tolist()
+        [0.1, -0.05]
+    """
+    return returns.copy(deep=False)
+
+
+@_contract
+def prepare_forward_spread(spread: pd.Series) -> pd.Series:
+    """接入按信号日记录的远期多空收益差
+
+    Args:
+        spread: DatetimeIndex Series, 日期唯一, 小数收益可含 NaN
+            每个值是一次远期收益观测, 持有期可以重叠
+
+    Returns:
+        登记后的 Series, 保留索引和数值
+
+    Raises:
+        TypeError: 输入不是日期索引 Series
+        ValueError: 日期或数值无效, 或输入是已登记的不兼容产物
+
+    Example:
+        >>> dates = pd.date_range("2024-01-01", periods=2)
+        >>> prepare_forward_spread(pd.Series([0.05, 0.03], index=dates)).tolist()
+        [0.05, 0.03]
+    """
+    return spread.copy(deep=False)
+
+
+@_contract
 def ic(*, factor: pd.Series, forward_return: pd.Series) -> pd.Series:
     """计算每个日期截面上因子与未来收益的 Pearson 相关
 
@@ -60,7 +109,8 @@ def ic(*, factor: pd.Series, forward_return: pd.Series) -> pd.Series:
         两边都没有成对记录的日期不出现; 空输入返回空 Series
 
     Raises:
-        KeyError: 索引没有 date 层
+        TypeError: 因子或未来收益不是面板 Series
+        ValueError: 索引、数值类型或已登记的上游不符合契约
 
     Example:
         >>> index = pd.MultiIndex.from_product(
@@ -77,6 +127,7 @@ def ic(*, factor: pd.Series, forward_return: pd.Series) -> pd.Series:
     return result
 
 
+@_contract
 def rank_ic(*, factor: pd.Series, forward_return: pd.Series) -> pd.Series:
     """计算每个日期截面上因子与未来收益的 Spearman 相关
 
@@ -92,7 +143,8 @@ def rank_ic(*, factor: pd.Series, forward_return: pd.Series) -> pd.Series:
         两边都没有成对记录的日期不出现; 空输入返回空 Series
 
     Raises:
-        KeyError: 索引没有 date 层
+        TypeError: 因子或未来收益不是面板 Series
+        ValueError: 索引、数值类型或已登记的上游不符合契约
 
     Example:
         >>> index = pd.MultiIndex.from_product(
@@ -109,6 +161,7 @@ def rank_ic(*, factor: pd.Series, forward_return: pd.Series) -> pd.Series:
     return result
 
 
+@_contract
 def ic_summary(*, ic: pd.Series) -> pd.Series:
     """把每日 IC 汇总成均值, 标准差, ICIR 和正值比例
 
@@ -127,7 +180,7 @@ def ic_summary(*, ic: pd.Series) -> pd.Series:
         均值和标准差都为 0 时 ic_ir 为 NaN
 
     Raises:
-        本函数不额外校验输入
+        ValueError: ic 来自已登记的不兼容上游
 
     Example:
         >>> [round(v, 6) for v in ic_summary(ic=pd.Series([1.0, -1.0]))]
@@ -148,6 +201,7 @@ def ic_summary(*, ic: pd.Series) -> pd.Series:
     )
 
 
+@_contract
 def total_return(*, returns: pd.Series) -> float:
     """计算简单收益率序列的区间复利收益
 
@@ -173,6 +227,7 @@ def total_return(*, returns: pd.Series) -> float:
     return float(np.prod(1 + values) - 1)
 
 
+@_contract
 def sharpe(*, returns: pd.Series) -> float:
     """计算简单收益率序列的样本夏普比率
 
@@ -200,6 +255,7 @@ def sharpe(*, returns: pd.Series) -> float:
     return _mean_over_std(float(values.mean()), float(values.std(ddof=1)))
 
 
+@_contract
 def max_drawdown(*, returns: pd.Series) -> float:
     """计算简单收益率复利净值的最大回撤
 
@@ -228,6 +284,7 @@ def max_drawdown(*, returns: pd.Series) -> float:
     return float(np.min(nav / peak[1:] - 1))
 
 
+@_contract
 def win_rate(*, returns: pd.Series) -> float:
     """计算简单收益率大于 0 的比例
 

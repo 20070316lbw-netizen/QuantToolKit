@@ -8,7 +8,10 @@ from __future__ import annotations
 
 import pandas as pd
 
+from quanttoolkit.registry import _contract, _origin
 
+
+@_contract
 def split_samples(
     *,
     samples: pd.DataFrame,
@@ -24,7 +27,7 @@ def split_samples(
         samples: assemble_samples 返回的 [date, ticker] DataFrame
         dates: 完整行情的共同交易日历, 不能从 samples 反推
         label_end: label_end_dates 在完整行情索引上生成的 Series
-            使用与标签相同的 gap 和 n_periods
+            使用与标签相同的 gap 和 n_periods, 外部日期可用 prepare_label_end_dates 接入
         train_end: 训练段边界, 含当天, 类型和时区规则同 split_dates
         valid_end: 验证段边界, 含当天, 不早于 train_end
         embargo: 非负交易日数, 一般取 gap + n_periods
@@ -36,7 +39,7 @@ def split_samples(
         test 不额外限制标签结束日期, 各段允许为空, 不修改输入
 
     Raises:
-        ValueError: train_end 晚于 valid_end, 或 embargo 为负数
+        ValueError: 日期边界无效, 结束日期缺少上游, 或已知的标签期限不一致
         TypeError: 无时区日历与有时区端点不能比较
 
     Example:
@@ -52,6 +55,15 @@ def split_samples(
         >>> [len(parts[role]) for role in ("train", "valid", "test")]
         [3, 1, 1]
     """
+    sample_origin = _origin(samples)
+    end_origin = _origin(label_end)
+    if sample_origin and end_origin:
+        sample_window, end_window = sample_origin[1], end_origin[1]
+        if sample_window and end_window and sample_window != end_window:
+            raise ValueError(
+                f"split_samples.label_end 的标签期限 {end_window} 与样本 {sample_window} 不一致"
+            )
+
     roles = split_dates(
         dates, train_end=train_end, valid_end=valid_end, embargo=embargo
     )

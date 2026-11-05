@@ -20,7 +20,7 @@ import pandas as pd
 from quanttoolkit.db.connection import DB, get_duckdb
 from quanttoolkit.factors.exposure import cma_exposure
 from quanttoolkit.factors.logvol_base import base_logvolfactor
-from quanttoolkit.metrics import ic_summary, rank_ic, win_rate
+from quanttoolkit.metrics import ic_summary, prepare_forward_spread, rank_ic, win_rate
 from quanttoolkit.model.dataset import assemble_samples, label_end_dates
 from quanttoolkit.model.lambdarank import (
     LambdaRankParams,
@@ -84,7 +84,9 @@ def main() -> None:
     summary = ic_summary(ic=score)
     spaced = ic_summary(ic=score.iloc[::QUARTER])
     weights = simple_quantile_long_short(score=pred, n_quantiles=5)
-    spread = (weights * forward.reindex(weights.index)).groupby(level="date").sum()
+    spread = prepare_forward_spread(
+        (weights * forward.reindex(weights.index)).groupby(level="date").sum()
+    )
     gain = pd.Series(
         booster.feature_importance(importance_type="gain"),
         index=booster.feature_name(),

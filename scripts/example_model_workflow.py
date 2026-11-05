@@ -25,6 +25,7 @@ from quanttoolkit.model.params import TrainLog
 from quanttoolkit.model.relevance import relevance_by_date
 from quanttoolkit.model.split import split_samples
 from quanttoolkit.panel.returns import future_returns
+from quanttoolkit.panel.transfer import prepare_price_panel
 
 
 def main(output_dir: Path | None = None) -> Path:
@@ -40,7 +41,7 @@ def main(output_dir: Path | None = None) -> Path:
         [base_momfactor(prices, window=5), base_momfactor(prices, window=20)], axis=1
     )
     horizon, gap = 5, 1
-    label = future_returns(df=prices, n_periods=horizon, gap=gap)
+    label = future_returns(df=prepare_price_panel(prices), n_periods=horizon, gap=gap)
     parts = split_samples(
         samples=assemble_samples(features=features, label=label),
         dates=dates,

@@ -20,7 +20,7 @@ from quanttoolkit.factors.combine import combine_scores
 from quanttoolkit.factors.exposure import cma_exposure
 from quanttoolkit.factors.logvol_base import base_logvolfactor
 from quanttoolkit.factors.zscore import zscore_by_date
-from quanttoolkit.metrics import ic_summary, rank_ic, win_rate
+from quanttoolkit.metrics import ic_summary, prepare_forward_spread, rank_ic, win_rate
 from quanttoolkit.model.dataset import assemble_samples, label_end_dates
 from quanttoolkit.model.lambdarank import (
     LambdaRankParams,
@@ -76,7 +76,9 @@ def main() -> None:
     def report(name: str, signal: pd.Series) -> None:
         summary = ic_summary(ic=rank_ic(factor=signal, forward_return=forward))
         weights = simple_quantile_long_short(score=signal, n_quantiles=5)
-        spread = (weights * forward.reindex(weights.index)).groupby(level="date").sum()
+        spread = prepare_forward_spread(
+            (weights * forward.reindex(weights.index)).groupby(level="date").sum()
+        )
         print(
             f"{name} rank_ic"
             f" mean {summary['ic_mean']:.6f}"

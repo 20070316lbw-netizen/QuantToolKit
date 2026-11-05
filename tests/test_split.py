@@ -2,9 +2,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from quanttoolkit.model.dataset import label_end_dates
+from quanttoolkit.model.dataset import label_end_dates, prepare_label_end_dates
 from quanttoolkit.model.split import split_dates, split_samples
 from quanttoolkit.panel.returns import future_returns
+from quanttoolkit.panel.transfer import prepare_price_panel
 
 
 def test_split_purges_tails_and_sorts_unique_dates():
@@ -84,7 +85,7 @@ def test_split_samples_removes_sparse_labels_crossing_both_boundaries():
     prices = pd.DataFrame(
         {"adj_close": np.arange(18) + 10.0}, index=complete.append(sparse)
     )
-    label = future_returns(df=prices, n_periods=1, gap=1)
+    label = future_returns(df=prepare_price_panel(prices), n_periods=1, gap=1)
     ends = label_end_dates(prices.index, n_periods=1, gap=1)
     samples = label.dropna().to_frame().assign(x=1).sample(frac=1, random_state=3)
     original = samples.copy()
@@ -111,7 +112,9 @@ def test_split_samples_excludes_unknown_dates_and_missing_ends():
     dates = pd.bdate_range("2024-01-01", periods=8, tz="Asia/Shanghai", name="date")
     index = pd.MultiIndex.from_product([dates, ["A"]], names=["date", "ticker"])
     samples = pd.DataFrame({"x": 1}, index=index)
-    ends = label_end_dates(index, n_periods=1, gap=0).drop(index[0])
+    ends = prepare_label_end_dates(
+        label_end_dates(index, n_periods=1, gap=0).drop(index[0])
+    )
     parts = split_samples(
         samples=samples,
         dates=dates[1:],

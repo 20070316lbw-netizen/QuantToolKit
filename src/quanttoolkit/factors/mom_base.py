@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import pandas as pd
 
-from quanttoolkit.panel.returns import log_returns
+from quanttoolkit.panel.returns import _log_returns
+from quanttoolkit.registry import _contract
 
 
+@_contract
 def base_momfactor(
     prices: pd.DataFrame,
     window: int,
@@ -50,7 +52,7 @@ def base_momfactor(
         2.0
     """
 
-    ret = log_returns(df=prices, price_col=price_col)
+    ret = _log_returns(prices[price_col])
 
     rolled = ret.groupby(level="ticker").transform(lambda x: x.rolling(window).sum())
 

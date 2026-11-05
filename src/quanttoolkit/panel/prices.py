@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import pandas as pd
 
+from quanttoolkit.registry import _contract
 
+
+@_contract
 def fill_price_gaps(prices: pd.DataFrame) -> pd.DataFrame:
     """按已有日历补齐内部缺行, 价格沿用前值, 成交量记为 0
 

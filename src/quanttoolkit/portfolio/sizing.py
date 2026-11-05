@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import pandas as pd
 
+from quanttoolkit.registry import _contract
 
+
+@_contract
 def simple_quantile_long_short(
     *,
     score: pd.Series,
@@ -80,6 +83,7 @@ def simple_quantile_long_short(
     return weighted.sort_index()
 
 
+@_contract
 def vol_quantile_long_short(
     *,
     score: pd.Series,

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from quanttoolkit.panel.transfer import prepare_price_panel
 from quanttoolkit.panel.volatility import forward_volatility, history_vol
 
 
@@ -48,28 +49,30 @@ def test_missing_prices_invalidate_whole_window_and_then_recover(price_panel):
     panel = price_panel.xs("A", level="ticker", drop_level=False).sort_index()
     panel.iloc[1, panel.columns.get_loc("close")] = np.nan
     np.testing.assert_allclose(
-        history_vol(df=panel, window=2), [np.nan] * 4 + [1 / np.sqrt(2)]
+        history_vol(df=prepare_price_panel(panel), window=2),
+        [np.nan] * 4 + [1 / np.sqrt(2)],
     )
     np.testing.assert_allclose(
-        forward_volatility(df=panel, window=2, gap=0),
+        forward_volatility(df=prepare_price_panel(panel), window=2, gap=0),
         [np.nan, np.nan, 1 / np.sqrt(2), np.nan, np.nan],
     )
     # gap=1 从第二条价格开始计算, 基准日价格不在这个未来窗口里
     panel.iloc[0, panel.columns.get_loc("close")] = np.nan
     panel.iloc[1, panel.columns.get_loc("close")] = 40.0
-    assert forward_volatility(df=panel, window=2, gap=1).iloc[0] == pytest.approx(
-        2.5 / np.sqrt(2)
-    )
+    assert forward_volatility(df=prepare_price_panel(panel), window=2, gap=1).iloc[
+        0
+    ] == pytest.approx(2.5 / np.sqrt(2))
 
 
 def test_constant_returns_have_zero_volatility(price_panel):
     panel = price_panel.xs("A", level="ticker", drop_level=False).sort_index()
     panel["close"] = [1, 2, 4, 8, 16]
     np.testing.assert_allclose(
-        history_vol(df=panel, window=2), [np.nan, np.nan, 0, 0, 0]
+        history_vol(df=prepare_price_panel(panel), window=2), [np.nan, np.nan, 0, 0, 0]
     )
     np.testing.assert_allclose(
-        forward_volatility(df=panel, window=2, gap=0), [0, 0, 0, np.nan, np.nan]
+        forward_volatility(df=prepare_price_panel(panel), window=2, gap=0),
+        [0, 0, 0, np.nan, np.nan],
     )
 
 
@@ -78,7 +81,9 @@ def test_volatility_defaults_and_custom_price_column(price_panel):
     assert forward_volatility(df=price_panel).isna().all()
     custom = price_panel.rename(columns={"close": "custom"})
     pd.testing.assert_series_equal(
-        history_vol(df=custom, window=np.int64(2), price_col="custom"),
+        history_vol(
+            df=prepare_price_panel(custom), window=np.int64(2), price_col="custom"
+        ),
         history_vol(df=price_panel, window=2),
     )
     pd.testing.assert_series_equal(

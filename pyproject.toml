@@ -12,6 +12,7 @@ dependencies = [
     "lightgbm>=4.7.0",
     "loguru>=0.7.3",
     "lxml>=6.0",
+    "matplotlib>=3.11.2",
     "numpy>=2.5.4",
     "pandas>=3.0.6",
     "scikit-learn>=1.9.1",

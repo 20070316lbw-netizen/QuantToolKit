@@ -66,6 +66,7 @@ assert result.fillna("embargo").tolist() == [
 
 `label_end` 来自 `label_end_dates` 在完整行情索引上的结果, 参数与 `future_returns` 相同。
 它按每只证券的记录位置取 `t+gap+n_periods` 的日期, 未来记录不足时为 `NaT`。
+如果结束日期由外部提供, 先调用 `prepare_label_end_dates` 接入。样本和结束日期都记录了标签期限时, 两边的期限必须一致。
 日期不在共同日历, 落在隔离期, 或标签结束日期未知的行, 都不进入任何一段。
 测试段不额外限制结束日期; 需要固定测试截止日时, 先将完整行情截到该日再生成标签和结束日期。
 调用示例见 [离线训练脚本](../scripts/example_model_workflow.py)。

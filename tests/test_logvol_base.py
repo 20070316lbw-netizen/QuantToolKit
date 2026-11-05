@@ -70,7 +70,9 @@ def test_logvol_custom_price_column(price_panel):
 def test_logvol_empty_input_keeps_name():
     empty = pd.DataFrame(
         columns=["adj_close"],
-        index=pd.MultiIndex.from_arrays([[], []], names=["date", "ticker"]),
+        index=pd.MultiIndex.from_arrays(
+            [pd.DatetimeIndex([]), []], names=["date", "ticker"]
+        ),
     )
     result = base_logvolfactor(empty, window=2)
     assert result.empty

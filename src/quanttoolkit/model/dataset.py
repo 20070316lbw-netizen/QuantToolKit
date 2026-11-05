@@ -13,7 +13,10 @@ from __future__ import annotations
 
 import pandas as pd
 
+from quanttoolkit.registry import _contract
 
+
+@_contract
 def label_end_dates(
     index: pd.MultiIndex, *, n_periods: int = 5, gap: int = 1
 ) -> pd.Series:
@@ -50,6 +53,30 @@ def label_end_dates(
     return dates.groupby(level="ticker").shift(-(gap + n_periods)).rename("label_end")
 
 
+@_contract
+def prepare_label_end_dates(values: pd.Series) -> pd.Series:
+    """接入外部标签的实际结束日期
+
+    Args:
+        values: [date, ticker] Series, 值为对应标签结束日期, 可含 NaT
+
+    Returns:
+        登记后的日期 Series, 保留原索引和值
+
+    Raises:
+        TypeError: 输入不是面板 Series
+        ValueError: 索引或日期类型不符, 或输入是已登记的不兼容产物
+
+    Example:
+        >>> dates = pd.date_range("2024-01-01", periods=1)
+        >>> index = pd.MultiIndex.from_product([dates, ["A"]], names=["date", "ticker"])
+        >>> prepare_label_end_dates(pd.Series(dates, index=index)).iloc[0] == dates[0]
+        True
+    """
+    return values.copy(deep=False)
+
+
+@_contract
 def assemble_samples(*, features: pd.DataFrame, label: pd.Series) -> pd.DataFrame:
     """把特征和标签按 [date, ticker] 拼在一起, 只留下完整样本
 

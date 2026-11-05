@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from quanttoolkit.model.params import ModelParams
+from quanttoolkit.registry import _contract
 
 
 @dataclass
@@ -167,6 +168,7 @@ def fit_lambdarank(
     )
 
 
+@_contract
 def predict_scores(*, booster: lgb.Booster, features: pd.DataFrame) -> pd.Series:
     """按特征表的行顺序预测 LightGBM 分数
 

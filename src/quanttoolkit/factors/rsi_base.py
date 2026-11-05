@@ -5,6 +5,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from quanttoolkit.registry import _contract
+
 
 def _rsi_value(avg_up: float, avg_down: float) -> float:
     total = avg_up + avg_down
@@ -55,6 +57,7 @@ def _wilder_rsi(prices: np.ndarray, window: int) -> np.ndarray:
     return out
 
 
+@_contract
 def base_rsifactor(
     prices: pd.DataFrame,
     window: int = 14,

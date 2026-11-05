@@ -7,6 +7,8 @@
 import numpy as np
 import pandas as pd
 
+from quanttoolkit.registry import _contract
+
 FF5 = ["mkt_rf", "smb", "hml", "rmw", "cma"]
 
 
@@ -35,6 +37,7 @@ def _rolling_cma(excess: np.ndarray, factors: np.ndarray, window: int) -> np.nda
     return cma
 
 
+@_contract
 def cma_exposure(prices: pd.DataFrame, ff: pd.DataFrame, window: int) -> pd.Series:
     """计算含截距 FF5 滚动回归中的 CMA 暴露
 

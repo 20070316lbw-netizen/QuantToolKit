@@ -33,6 +33,8 @@ uv add "quanttoolkit @ git+https://github.com/20070316lbw-netizen/QuantToolKit.g
 | [factors](docs/factors.md) | 动量, 反转, 对数波动率, RSI, 行业中性, 截面标准化与加权合成 |
 | [portfolio](docs/sizing.md) | [调仓日历](docs/rebalance.md), 分位仓位, [买入持有基准](docs/benchmark.md) |
 | [metrics](docs/metrics.md) | 截面 IC 及汇总, 夏普, 最大回撤等指标 |
+| [registry](docs/registry.md) | 查询接口阶段、输入、上游和输出契约 |
+| [figure](docs/figure.md) | 因子研究, 向量化回测和事件驱动回测的单图与报告 |
 | [model](docs/model.md) | [样本组装](docs/dataset.md), [日期切分](docs/split.md), LightGBM 参数与排序训练, 手写回归树, 简化 GBDT, JSON 训练日志 |
 | [tracelog](docs/tracelog.md) | 函数耗时, 返回值摘要与调用链 |
 

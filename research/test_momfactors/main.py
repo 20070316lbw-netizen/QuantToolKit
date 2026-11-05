@@ -8,6 +8,7 @@ from quanttoolkit.db.connection import DB, get_duckdb
 from quanttoolkit.factors.mom_base import base_momfactor
 from quanttoolkit.factors.neutral import neutralize_by_industry
 from quanttoolkit.panel.returns import future_returns
+from quanttoolkit.panel.transfer import to_date_ticker_frame
 
 with get_duckdb(path=DB) as connection:
     universe = connection.execute(
@@ -35,7 +36,7 @@ industry = universe.set_index("ticker")["sub_industry"]
 # 空字符串也单独看一下
 # print("行业空字符串数量", industry.eq("").sum())
 
-prices = prices.set_index(["date", "ticker"]).sort_index()
+prices = to_date_ticker_frame(df=prices)
 
 mom = base_momfactor(prices=prices, window=63, skip=0)
 target = future_returns(df=prices, n_periods=20, gap=1)

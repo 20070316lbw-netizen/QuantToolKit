@@ -81,7 +81,9 @@ def test_fills_interior_gaps_and_keeps_existing_rows():
 def test_empty_and_complete_panels_keep_their_rows():
     empty = pd.DataFrame(
         columns=["close", "volume"],
-        index=pd.MultiIndex.from_arrays([[], []], names=["date", "ticker"]),
+        index=pd.MultiIndex.from_arrays(
+            [pd.DatetimeIndex([]), []], names=["date", "ticker"]
+        ),
     )
     filled_empty = fill_price_gaps(empty)
     assert filled_empty.empty

@@ -5,7 +5,10 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from quanttoolkit.registry import _contract
 
+
+@_contract
 def future_returns(
     *,
     df: pd.DataFrame,
@@ -16,7 +19,8 @@ def future_returns(
     """生成未来持有期的简单收益率标签
 
     Args:
-        df: [date, ticker] MultiIndex DataFrame, 含 price_col 列, 键非空且唯一
+        df: 已登记的 [date, ticker] DataFrame, 含 price_col 列, 键非空且唯一
+            外部面板用 prepare_price_panel 接入
         n_periods: 持有期数, 默认 5, 正整数, 按每只证券的交易记录计数
         gap: 当天到入场的记录数, 默认 1, 非负整数
         price_col: 价格列名, 默认 adj_close, 非缺失价格须为正数
@@ -31,14 +35,16 @@ def future_returns(
         因为标签用到的最后价格落在 t + gap + n_periods
 
     Raises:
+        ValueError: 面板未经过行情准备或价格数据无效
         KeyError: price_col 指定的列或 ticker 索引层不存在
 
     Example:
+        >>> from quanttoolkit.panel.transfer import prepare_price_panel
         >>> index = pd.MultiIndex.from_product(
         ...     [pd.date_range("2024-01-01", periods=3), ["A"]],
         ...     names=["date", "ticker"],
         ... )
-        >>> prices = pd.DataFrame({"adj_close": [1., 2., 4.]}, index=index)
+        >>> prices = prepare_price_panel(pd.DataFrame({"adj_close": [1., 2., 4.]}, index=index))
         >>> future_returns(df=prices, n_periods=1, gap=0).iloc[:2].tolist()
         [1.0, 1.0]
     """
@@ -49,6 +55,7 @@ def future_returns(
     return (exit_price / entry - 1).rename(f"forward_return_{n_periods}_gap_{gap}")
 
 
+@_contract
 def historical_return(
     *,
     df: pd.DataFrame,
@@ -58,7 +65,8 @@ def historical_return(
     """计算截至基准日期的历史简单收益率
 
     Args:
-        df: [date, ticker] MultiIndex DataFrame, 含 price_col 列, 键非空且唯一
+        df: 已登记的 [date, ticker] DataFrame, 含 price_col 列, 键非空且唯一
+            外部面板用 prepare_price_panel 接入
         n_periods: 回看期数, 默认 5, 正整数
             按每只证券自己的交易记录计数, 不补齐交易日
         price_col: 价格列名, 默认 adj_close, 非缺失价格须为正数
@@ -70,22 +78,29 @@ def historical_return(
         空输入返回空 Series, 可用于历史特征
 
     Raises:
+        ValueError: 面板未经过行情准备或价格数据无效
         KeyError: price_col 指定的列或 ticker 索引层不存在
 
     Example:
+        >>> from quanttoolkit.panel.transfer import prepare_price_panel
         >>> index = pd.MultiIndex.from_product(
         ...     [pd.date_range("2024-01-01", periods=3), ["A"]],
         ...     names=["date", "ticker"],
         ... )
-        >>> prices = pd.DataFrame({"adj_close": [1., 2., 4.]}, index=index)
+        >>> prices = prepare_price_panel(pd.DataFrame({"adj_close": [1., 2., 4.]}, index=index))
         >>> historical_return(df=prices, n_periods=1).iloc[1:].tolist()
         [1.0, 1.0]
     """
-    prices = df[price_col].sort_index()
+    return _historical_return(df[price_col], n_periods)
+
+
+def _historical_return(prices: pd.Series, n_periods: int) -> pd.Series:
+    prices = prices.sort_index()
     previous = prices.groupby(level="ticker", sort=False).shift(n_periods)
     return (prices / previous - 1).rename(f"historical_return_{n_periods}")
 
 
+@_contract
 def log_returns(
     *,
     df: pd.DataFrame,
@@ -94,7 +109,8 @@ def log_returns(
     """在每只证券内计算相邻两条价格的对数收益率
 
     Args:
-        df: [date, ticker] MultiIndex DataFrame, 含 price_col 列, 键非空且唯一
+        df: 已登记的 [date, ticker] DataFrame, 含 price_col 列, 键非空且唯一
+            外部面板用 prepare_price_panel 接入
         price_col: 价格列名, 默认 adj_close, 非缺失价格须为正数
 
     Returns:
@@ -104,18 +120,24 @@ def log_returns(
         空输入返回空 Series
 
     Raises:
+        ValueError: 面板未经过行情准备或价格数据无效
         KeyError: price_col 指定的列或 ticker 索引层不存在
 
     Example:
+        >>> from quanttoolkit.panel.transfer import prepare_price_panel
         >>> index = pd.MultiIndex.from_product(
         ...     [pd.date_range("2024-01-01", periods=2), ["A"]],
         ...     names=["date", "ticker"],
         ... )
-        >>> prices = pd.DataFrame({"adj_close": [1., np.e]}, index=index)
+        >>> prices = prepare_price_panel(pd.DataFrame({"adj_close": [1., np.e]}, index=index))
         >>> log_returns(df=prices).iloc[1].round(6)
         np.float64(1.0)
     """
-    prices = df[price_col].sort_index()
+    return _log_returns(df[price_col])
+
+
+def _log_returns(prices: pd.Series) -> pd.Series:
+    prices = prices.sort_index()
     return (
         np.log(prices).groupby(level="ticker", sort=False).diff().rename("log_return")
     )
