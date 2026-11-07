@@ -1,12 +1,13 @@
 # 数据源使用说明
 
-先选数据从哪里来: Yahoo 下载行情, Wikipedia 抓当前成员, French 读取本地因子 ZIP。
-拿到后可以直接计算, 也可以按 [数据库说明](../db/README.md) 存起来。三个入口的返回格式不同, 先看下表:
+先选数据从哪里来: Yahoo 下载行情, Wikipedia 抓当前成员, French 读取本地因子 ZIP, SEC 提供 Company Facts 归档。
+拿到后可以直接计算, 也可以按 [数据库说明](../db/README.md) 存起来。各入口的返回格式不同, 先看下表:
 
 | 数据 | 入口 | 返回格式 | 前提 |
 | --- | --- | --- | --- |
 | Yahoo 行情 | `get_prices` | `[date, ticker]` MultiIndex DataFrame | 需要网络 |
 | 最新标普500成员 | `fetch_sp500_universe` | 普通列 DataFrame | 需要网络 |
+| SEC Company Facts | `download_company_facts` / `read_company_facts` | 期间事实与时点事实 DataFrame | 官方 Company Facts ZIP |
 | Kenneth French 日频因子 | `read_french_factors` | 以 `date` 为索引的 DataFrame | 已下载官方 ZIP |
 
 仓库脚本在仓库根目录运行; 外部项目直接导入上述接口, 并传入自己的文件或数据库路径。
@@ -178,3 +179,25 @@ print(written, returns.tail())
 [`scripts/ingest_prices.py`](../../../scripts/ingest_prices.py) 读取 `universe` 中的代码, 下载日行情并写入 `prices`。独立计算的离线示例见 [收益率文档](../../../docs/returns.md)。
 
 测试用模拟下载响应校验清洗及下游流程, 不依赖实时 Yahoo 服务。
+
+## SEC EDGAR Company Facts
+
+从 SEC 官方归档下载 XBRL 公司事实
+User-Agent 填写调用者名称和联系邮箱
+归档较大, 已有 ZIP 可以直接复用
+见 [EDGAR API 与批量下载](https://www.sec.gov/search-filings/edgar-application-programming-interfaces) 和 [访问规则](https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data)
+
+```python
+from quanttoolkit.sources import download_company_facts, read_company_facts
+
+archive = download_company_facts(
+    "data/companyfacts.zip", user_agent="Your Name you@example.com"
+)
+period, instant = read_company_facts(archive, ["0000320193"])
+```
+
+`period` 含期间开始和结束日, `instant` 只有观察日
+两者保留 CIK, taxonomy, concept, 单位, 数值, 申报日期 `filed` 和 accession `accn`
+同一公司的修订申报可以保留为独立记录
+Company Facts 的 `filed` 是日期, 盘中可用时刻需要另取证据
+入库和研究示例见 [SEC 事实表](../db/README.md#sec-事实表)

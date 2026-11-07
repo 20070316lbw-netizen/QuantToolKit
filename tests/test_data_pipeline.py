@@ -1,3 +1,4 @@
+import json
 from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
@@ -9,6 +10,9 @@ import pytest
 from loguru import logger
 
 from quanttoolkit import data_pipeline, tracelog
+from quanttoolkit.sources import companyfacts
+
+_SEC_USER_AGENT = "Test test@example.org"
 
 
 @pytest.fixture(autouse=True)
@@ -43,6 +47,16 @@ def sources(monkeypatch):
 
     def download(request, *, timeout):
         assert timeout == 30
+        if request.full_url.endswith("/company_tickers.json"):
+            assert request.get_header("User-agent") == _SEC_USER_AGENT
+            return BytesIO(
+                json.dumps(
+                    {
+                        "0": {"ticker": "A", "cik_str": 1},
+                        "1": {"ticker": "B", "cik_str": 2},
+                    }
+                ).encode()
+            )
         five = "5_Factors" in request.full_url
         columns = ",Mkt-RF,SMB,HML,RMW,CMA,RF" if five else ",Mkt-RF,SMB,HML,RF"
         values = ",1,2,3,4,5,0.1" if five else ",1,2,3,0.1"
@@ -53,6 +67,29 @@ def sources(monkeypatch):
             zipped.writestr("factors.csv", content + "\n\ncopyright\n")
         return BytesIO(archive.getvalue())
 
+    def download_facts(request, *, timeout):
+        assert request.full_url.endswith("/companyfacts.zip")
+        assert request.get_header("User-agent") == _SEC_USER_AGENT
+        assert timeout == 60
+        archive = BytesIO()
+        with ZipFile(archive, "w") as zipped:
+            for cik, taxonomy in [(1, "us-gaap"), (2, "ifrs-full")]:
+                filing = {
+                    "end": "2023-12-31",
+                    "val": 100,
+                    "accn": f"{cik}-24-1",
+                    "form": "10-K" if cik == 1 else "20-F",
+                    "filed": "2024-02-01",
+                }
+                concepts = {
+                    "Assets": {"units": {"USD": [filing]}},
+                    "Revenue": {"units": {"USD": [{**filing, "start": "2023-01-01"}]}},
+                }
+                payload = {"facts": {taxonomy: concepts}}
+                zipped.writestr(f"CIK{cik:010d}.json", json.dumps(payload))
+        return BytesIO(archive.getvalue())
+
+    monkeypatch.setattr(companyfacts, "urlopen", download_facts)
     monkeypatch.setattr(data_pipeline, "fetch_sp500_universe", lambda: universe.copy())
     monkeypatch.setattr(data_pipeline, "get_prices", fetch_prices)
     monkeypatch.setattr(data_pipeline, "urlopen", download)
@@ -70,12 +107,16 @@ def sources(monkeypatch):
 )
 def test_main_prepares_database_and_logs(tmp_path, sources, log_dir, data_dir):
     dates, _, _, calls = sources
-    database = data_pipeline.main(logger_path=log_dir, data_path=data_dir)
+    database = data_pipeline.main(
+        logger_path=log_dir, data_path=data_dir, sec_user_agent=_SEC_USER_AGENT
+    )
     expected_data = tmp_path / (data_dir or "data")
     expected_logs = tmp_path / (log_dir or "logs")
     assert database == expected_data / "quanttoolkit.db"
     assert (expected_data / "ff3_daily.zip").is_file()
     assert (expected_data / "ff5_daily.zip").is_file()
+    assert (expected_data / "company_tickers.json").is_file()
+    assert (expected_data / "companyfacts.zip").is_file()
     assert calls == [
         {
             "tickers": ["A", "B"],
@@ -87,6 +128,10 @@ def test_main_prepares_database_and_logs(tmp_path, sources, log_dir, data_dir):
     ]
     with duckdb.connect(str(database), read_only=True) as connection:
         assert connection.execute("SELECT COUNT(*) FROM universe").fetchone()[0] == 2
+        for table in ("period_facts", "instant_facts"):
+            assert connection.execute(
+                f"SELECT cik, taxonomy FROM {table} ORDER BY cik"
+            ).fetchall() == [("0000000001", "us-gaap"), ("0000000002", "ifrs-full")]
         assert connection.execute("SELECT COUNT(*) FROM prices").fetchone()[0] == 140
         assert (
             connection.execute("SELECT COUNT(*) FROM ff_factors").fetchone()[0] == 140
@@ -123,7 +168,7 @@ def test_main_prepares_database_and_logs(tmp_path, sources, log_dir, data_dir):
 def test_repeat_run_updates_data_and_closes_pipeline_sink(
     tmp_path, sources, monkeypatch
 ):
-    database = data_pipeline.main()
+    database = data_pipeline.main(sec_user_agent=_SEC_USER_AGENT)
     log_path = tmp_path / "logs/data_pipeline.log"
     first = log_path.read_text()
     logger.info("运行结束后不再写入流水线文件")
@@ -134,6 +179,11 @@ def test_repeat_run_updates_data_and_closes_pipeline_sink(
     prices.loc[:, "close"] = prices["close"] * 2
     monkeypatch.setattr(data_pipeline, "fetch_sp500_universe", lambda: universe)
     monkeypatch.setattr(data_pipeline, "get_prices", lambda **kwargs: prices)
+
+    def unexpected_download(*args, **kwargs):
+        pytest.fail("SEC cache should be reused")
+
+    monkeypatch.setattr(companyfacts, "urlopen", unexpected_download)
     assert data_pipeline.main() == database
     with duckdb.connect(str(database), read_only=True) as connection:
         assert connection.execute("SELECT COUNT(*) FROM prices").fetchone()[0] == 140
@@ -145,6 +195,12 @@ def test_repeat_run_updates_data_and_closes_pipeline_sink(
         ).fetchone() == ("Changed",)
         assert connection.execute("SELECT MIN(close) FROM prices").fetchone()[0] == 200
         assert (
+            connection.execute("SELECT COUNT(*) FROM period_facts").fetchone()[0] == 2
+        )
+        assert (
+            connection.execute("SELECT COUNT(*) FROM instant_facts").fetchone()[0] == 2
+        )
+        assert (
             connection.execute("SELECT COUNT(*) FROM factor_panel").fetchone()[0] == 14
         )
     assert log_path.read_text().startswith(first)
@@ -153,7 +209,7 @@ def test_repeat_run_updates_data_and_closes_pipeline_sink(
 def test_network_failure_is_logged_and_stops_before_prices(
     tmp_path, sources, monkeypatch
 ):
-    database = data_pipeline.main()
+    database = data_pipeline.main(sec_user_agent=_SEC_USER_AGENT)
     sentinel = TimeoutError("French 下载超时")
 
     def failed(*args, **kwargs):
@@ -162,7 +218,7 @@ def test_network_failure_is_logged_and_stops_before_prices(
     monkeypatch.setattr(data_pipeline, "urlopen", failed)
     sources[3].clear()
     with pytest.raises(TimeoutError) as caught:
-        data_pipeline.main()
+        data_pipeline.main(sec_user_agent=_SEC_USER_AGENT)
     assert caught.value is sentinel
     assert sources[3] == []
     with duckdb.connect(str(database), read_only=True) as connection:
@@ -185,16 +241,16 @@ def test_empty_prices_does_not_report_success(tmp_path, sources, monkeypatch):
         data_pipeline, "get_prices", lambda **kwargs: sources[2].iloc[:0]
     )
     with pytest.raises(ValueError, match="日行情为空"):
-        data_pipeline.main()
+        data_pipeline.main(sec_user_agent=_SEC_USER_AGENT)
     log = (tmp_path / "logs/data_pipeline.log").read_text()
     assert "数据准备完成" not in log
-    assert "[4/4]" not in log
+    assert "[4/5]" not in log
 
 
 def test_partial_prices_warns_about_missing_member(tmp_path, sources, monkeypatch):
     prices = sources[2].loc[lambda frame: frame.index.get_level_values("ticker") == "A"]
     monkeypatch.setattr(data_pipeline, "get_prices", lambda **kwargs: prices)
-    database = data_pipeline.main()
+    database = data_pipeline.main(sec_user_agent=_SEC_USER_AGENT)
     log = (tmp_path / "logs/data_pipeline.log").read_text()
     assert "以下 1 个成员没有本次行情: B" in log
     with duckdb.connect(str(database), read_only=True) as connection:
@@ -206,5 +262,10 @@ def test_empty_universe_stops_before_download(sources, monkeypatch):
         data_pipeline, "fetch_sp500_universe", lambda: sources[1].iloc[:0]
     )
     with pytest.raises(ValueError, match="成员名单为空"):
-        data_pipeline.main()
+        data_pipeline.main(sec_user_agent=_SEC_USER_AGENT)
     assert sources[3] == []
+
+
+def test_first_run_requires_a_sec_user_agent_or_local_files():
+    with pytest.raises(FileNotFoundError, match="sec_user_agent"):
+        data_pipeline.main()

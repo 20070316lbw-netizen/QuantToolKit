@@ -28,7 +28,7 @@ uv add "quanttoolkit @ git+https://github.com/20070316lbw-netizen/QuantToolKit.g
 | 模块 | 内容 |
 | --- | --- |
 | [db](src/quanttoolkit/db/README.md) | DuckDB 连接, SQL 建表与事务写入 |
-| [sources](src/quanttoolkit/sources/USAGE.md) | 标普500成员, Kenneth French 日频因子, Yahoo 行情 |
+| [sources](src/quanttoolkit/sources/USAGE.md) | 标普500成员, Kenneth French 日频因子, Yahoo 行情和 SEC Company Facts |
 | [panel](docs/data-structure.md) | 长表转换, 价格补齐, [收益率](docs/returns.md), [波动率](docs/volatility.md) |
 | [factors](docs/factors.md) | 动量, 反转, 对数波动率, RSI, 行业中性, 截面标准化与加权合成 |
 | [portfolio](docs/sizing.md) | [调仓日历](docs/rebalance.md), 分位仓位, [买入持有基准](docs/benchmark.md) |
@@ -43,11 +43,12 @@ uv add "quanttoolkit @ git+https://github.com/20070316lbw-netizen/QuantToolKit.g
 ```python
 from quanttoolkit.data_pipeline import main
 
-main(logger_path="logs", data_path="data")
+database = main(sec_user_agent="Your Name you@example.com")
 ```
 
-自动获取名单, 行情和 French 因子, 写入数据库并建立因子视图
-参数省略时使用当前工作目录下的 `logs/` 和 `data/`, 见 [数据准备](docs/data-pipeline.md)
+自动获取名单, 行情, French 因子和 SEC 公司事实, 写入数据库并建立因子视图
+路径参数省略时使用当前工作目录下的 `logs/` 和 `data/`, 见 [数据准备](docs/data-pipeline.md)
+SEC User-Agent 填写自己的名称和联系邮箱, 已有两份 SEC 文件时可省略该参数
 单独调用各步骤, 见 [数据源说明](src/quanttoolkit/sources/USAGE.md) 和 [数据库说明](src/quanttoolkit/db/README.md)
 
 ## 许可证

@@ -143,6 +143,77 @@ CATALOG = {
         interval=_input("行情周期, 默认日频 1d"),
         progress=_input("是否显示进度"),
     ),
+    "sources.companyfacts.download_company_facts": _step(
+        "数据接入",
+        "下载 SEC EDGAR 的 Company Facts 批量归档",
+        "通过 ZIP 目录检查的本地归档路径",
+        destination=_input("本地 ZIP 路径, 父目录须存在"),
+        user_agent=_input("含调用者名称和联系邮箱的 SEC User-Agent"),
+    ),
+    "sources.companyfacts.read_company_facts": _step(
+        "数据接入",
+        "按 CIK 读取 SEC XBRL 事实, 分为期间和时点",
+        "(period_facts, instant_facts), 保留单位, 申报日和 accession",
+        zip_path=_input(
+            "本地 Company Facts ZIP", "sources.companyfacts.download_company_facts"
+        ),
+        ciks=_input("十位 CIK 字符串序列"),
+    ),
+    "db.companyfacts.write_company_facts": _step(
+        "数据接入",
+        "在同一 DuckDB 事务写入期间和时点事实",
+        "(期间写入行数, 时点写入行数)",
+        connection=_input("可写 DuckDB 连接", "db.connection.get_duckdb"),
+        period=_input("期间事实表", "sources.companyfacts.read_company_facts"),
+        instant=_input("时点事实表", "sources.companyfacts.read_company_facts"),
+    ),
+    "fundamentals.fundamental_fact_mapping": _step(
+        "数据接入",
+        "查询已登记的 SEC 标签与规范财务指标",
+        "普通列 DataFrame, 含 fact_kind, taxonomy, concept, metric, priority",
+        workflows=_RESEARCH,
+    ),
+    "fundamentals.read_fundamental_facts": _step(
+        "数据接入",
+        "读取指定 CIK 的规范财务事实, 保留报告单位和申报编号",
+        "含 metric, 原始 taxonomy, concept, unit, filed, accn 的普通列 DataFrame",
+        connection=_input(
+            "含期间和时点事实表的 DuckDB 连接", "db.connection.get_duckdb"
+        ),
+        ciks=_input("十位 CIK 字符串序列"),
+        workflows=_RESEARCH,
+    ),
+    "fundamentals.filing_panel": _step(
+        "数据接入",
+        "从公司事实整理每只证券在各申报日的财务指标",
+        "按 ticker 和 filed 排序的申报日面板",
+        instant=_input("时点事实表", "sources.companyfacts.read_company_facts"),
+        period=_input("期间事实表", "sources.companyfacts.read_company_facts"),
+        members=_input("含 ticker, cik 的证券映射"),
+        workflows=_RESEARCH,
+    ),
+    "fundamentals.read_filing_panel": _step(
+        "数据接入",
+        "从已入库的事实表读取申报日面板",
+        "按 ticker 和 filed 排序的申报日面板",
+        connection=_input(
+            "含期间和时点事实表的 DuckDB 连接", "db.connection.get_duckdb"
+        ),
+        members=_input("含 ticker, cik 的证券映射"),
+        workflows=_RESEARCH,
+    ),
+    "fundamentals.align_filings": _step(
+        "数据接入",
+        "按证券将申报日面板接到日线, 使用严格早于交易日的申报",
+        "按 [date, ticker] 排序的行情及财务列",
+        prices=_input("[date, ticker] 行情面板", *_PANEL_SOURCES),
+        filings=_input(
+            "含 ticker, filed 的面板",
+            "fundamentals.filing_panel",
+            "fundamentals.read_filing_panel",
+        ),
+        workflows=_RESEARCH,
+    ),
     "sources.french.read_french_factors": _step(
         "数据接入",
         "解析 French 日频因子",
@@ -178,10 +249,13 @@ CATALOG = {
     ),
     "data_pipeline.main": _step(
         "数据接入",
-        "下载名单、行情和 French 因子并建立 DuckDB 视图",
+        "准备名单, 行情, French 因子和 SEC 公司事实, 再建立 DuckDB 视图",
         "数据库文件绝对路径",
         logger_path=_input("可选日志目录"),
         data_path=_input("可选数据目录"),
+        sec_user_agent=_input(
+            "SEC User-Agent, 含调用者名称和联系邮箱, 默认复用本地文件"
+        ),
     ),
     "panel.transfer.to_date_ticker_frame": _step(
         "行情准备",

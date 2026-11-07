@@ -235,3 +235,71 @@ uv run ruff format --check src/quanttoolkit/db/operation.py scripts/ingest_unive
 测试覆盖文件持久化, 完整替换名单, 行情更新与追加, 重复写入, SQL NULL,
 空输入, 主键及非空约束, 日内时间转换, 只读写入拒绝和事务失败后的回滚
 GitHub Actions 生成 XML, HTML 和运行摘要中的覆盖率报告, 并上传报告供下载
+
+## SEC 事实表
+
+用 [数据准备入口](../../../docs/data-pipeline.md) 为当前证券池下载或复用本地 SEC 文件
+`period_facts` 和 `instant_facts` 在每一批的同一个事务写入
+主键包括 CIK, 科目, 单位, 财务期间和 accession
+同键重导入更新该行, 修订申报使用各自的 accession
+原始事实保留 `us-gaap`, `ifrs-full` 等 taxonomy
+当前证券代码映射适合选取当前公司, 历史研究需使用有历史依据的证券与 CIK 对照
+
+只处理选定公司时, 可直接调用读写接口:
+
+```python
+from pathlib import Path
+
+from quanttoolkit.db.companyfacts import write_company_facts
+from quanttoolkit.db.connection import get_duckdb
+from quanttoolkit.sources import read_company_facts
+
+period, instant = read_company_facts("data/companyfacts.zip", ["0000320193"])
+with get_duckdb(path=Path("data/quanttoolkit.db"), read_only=False) as connection:
+    write_company_facts(connection, period, instant)
+```
+
+读取申报日面板时, 提供证券与 CIK 的映射:
+
+```python
+from pathlib import Path
+
+import pandas as pd
+
+from quanttoolkit.db.connection import get_duckdb
+from quanttoolkit.fundamentals import read_filing_panel
+
+members = pd.DataFrame({"ticker": ["AAPL"], "cik": ["0000320193"]})
+with get_duckdb(path=Path("data/quanttoolkit.db")) as connection:
+    filings = read_filing_panel(connection, members)
+```
+
+申报日面板用 `us-gaap` 的美元科目和 `dei` 的股数科目整理资产, 权益, 股数, 单季收入, 单季及近四季净利润和资产同比
+使用 IFRS 历史数据时需要另行映射指标和单位
+研究时调用 `align_filings(prices, filings)`, 只使用申报日期严格早于该交易日的记录
+
+### 查询跨准则的规范指标
+
+`fundamental_fact_mapping()` 返回完整的已登记科目表, 键为 `fact_kind`, `taxonomy`, `concept`
+现有面板用到的科目和 CRH 历史 IFRS 科目共用这一张表
+`read_fundamental_facts` 按 CIK 查询规范指标, 可同时读取 CRH 的 IFRS 和 U.S. GAAP 历史
+
+```python
+from pathlib import Path
+
+from quanttoolkit.db.connection import get_duckdb
+from quanttoolkit.fundamentals import fundamental_fact_mapping, read_fundamental_facts
+
+mapping = fundamental_fact_mapping()
+with get_duckdb(path=Path("data/quanttoolkit.db")) as connection:
+    facts = read_fundamental_facts(connection, ["0000849395"])
+
+revenue = facts.loc[facts["metric"] == "revenue"]
+```
+
+规范事实保留原始标签, 单位, 期间, 申报日期和 accession
+同份申报, 同一期间和单位内, 总收入优先于客户合同收入等候选科目
+归母权益和净利润分别为 `equity` 和 `net_income`, 含少数股东权益和损益的值分别为 `total_equity` 和 `total_net_income`
+CRH 历史上以 EUR 和 USD 申报, 查询保留各自单位
+用于跨期研究时, 先按单位和准则选择可比事实
+年报中的收入或利润保留原始起止日, 可以由调用方明确区分全年与单季

@@ -5,14 +5,16 @@
 ```python
 from quanttoolkit.data_pipeline import main
 
-database = main()
+database = main(sec_user_agent="Your Name you@example.com")
 ```
 
-不用先手动下载 ZIP, 也不用另外拼建表和写入代码
+首次运行用自己的名称和联系邮箱替换示例的 SEC User-Agent
+此时流水线下载 SEC 证券代码映射和 Company Facts 归档
+再次传入该参数会刷新两份 SEC 文件, 省略时使用数据目录中已有的文件
 返回值是数据库的绝对路径, 可以直接交给 `get_duckdb(path=database)`
 导入模块不会开始下载, 调用 `main()` 才开始
 
-也可以只改文件夹位置, 两个参数都支持字符串和 `Path`:
+已有 SEC 文件时可以指定文件夹位置, 两个路径参数都支持字符串和 `Path`:
 
 ```python
 from quanttoolkit.data_pipeline import main
@@ -32,11 +34,13 @@ database = main(logger_path="logs", data_path="data")
 3. 下载官方 FF3 和 FF5 日频 ZIP, 放在数据目录, 解析后一起写入 `ff_factors`
 4. 按本次名单下载 2016-01-01 起的 Yahoo 日行情, 结束范围由 Yahoo 决定
 5. 补齐每只证券首尾之间的内部缺行, 再写入 `prices`
-6. 执行包内的 `factor_panel.sql`, 建立 `factor_panel` 视图
+6. 把本次名单通过 SEC 代码映射去重为 CIK, 分批解析 Company Facts, 写入 `period_facts` 和 `instant_facts`
+7. 执行包内的 `factor_panel.sql`, 建立 `factor_panel` 视图
 
 行情沿用现有入库脚本的 `auto_adjust=True`, OHLC 是复权价格
 补齐日的价格沿用前值, 成交量为 0, 不补上市前或最后一条记录之后的数据
 French 原始百分数除以 100 后入库, FF3 的 `rmw` 和 `cma` 为空
+财报保留原始 taxonomy, 按申报日整理的研究面板由 `read_filing_panel` 按需读取
 数据口径见 [数据源说明](../src/quanttoolkit/sources/USAGE.md) 和 [数据库说明](../src/quanttoolkit/db/README.md)
 
 默认生成:
@@ -49,7 +53,9 @@ French 原始百分数除以 100 后入库, FF3 的 `rmw` 和 `cma` 为空
 └── data/
     ├── quanttoolkit.db
     ├── ff3_daily.zip
-    └── ff5_daily.zip
+    ├── ff5_daily.zip
+    ├── company_tickers.json
+    └── companyfacts.zip
 ```
 
 `data_pipeline.log` 追加记录文件夹位置, 步骤进度, 数据源日志, 入库条数与异常
@@ -64,7 +70,9 @@ Yahoo 进度条仍由数据源显示在终端
 `universe` 和 `ff_factors` 分别完整替换, `prices` 按 `(ticker, date)` 更新或追加
 不会主动删除已经存下的其他股票历史, 再次运行也不会重复插入同一条行情
 
-每张表各自事务写入, 失败的写入会回滚, 前面已经完成的步骤保留
+SEC 事实按键更新或追加, 同一批 CIK 的期间事实和时点事实在同一事务提交
+映射缺少证券或 ZIP 缺少 CIK 时停止并记录错误
+失败的事务会回滚, 前面已经完成的步骤保留
 某一步抛出异常时记录原因并停止, 修复后重新调用 `main()` 即可
 部分证券没有抓到行情时记录缺失名单, 其余数据继续入库; 全部行情为空时停止
 首次运行若中途失败, 数据库可能只有已经完成的表, 此时不能当作准备成功
