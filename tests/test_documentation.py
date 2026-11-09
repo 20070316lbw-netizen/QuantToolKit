@@ -58,6 +58,7 @@ def test_database_documentation_examples(section):
         "split",
         "dataset",
         "model",
+        "mlp",
         "metrics",
         "sizing",
         "benchmark",

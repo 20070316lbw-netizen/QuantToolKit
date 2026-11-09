@@ -13,12 +13,20 @@
 | `SimpleGBDT` | 同上, 可另传验证集 | `fit` → `predict`, 可按验证误差挑选轮数 |
 | `LightGBMParams` | 回归参数 | `fit_lightgbm` → `predict_scores`, 支持验证早停 |
 | `LambdaRankParams` | 排序参数 | 配合 `relevance_by_date` → `fit_lambdarank` → `predict_scores` |
+| [`MLPParams`](mlp.md) | 神经网络和训练参数 | `fit_mlp_ranker` → `MLPRanker.predict`, 直接学习同日未来收益顺序 |
 | `TrainLog` | 模型名、参数字典、指标字典 | 保存或读取 JSON 训练记录 |
 
 预测时仍按训练时的列数和顺序传入特征。数组模型返回数组, 需要自己把结果装回原样本索引的 Series;
 `predict_scores` 会检查训练特征的列名和顺序, 直接返回与输入特征同索引的 `pred` Series。
 完整流程见 [离线示例](../scripts/example_model_workflow.py), 在仓库根目录运行
 `uv run python scripts/example_model_workflow.py`。
+
+MLP 的参数, 网络, 训练和预测放在独立的 [mlp 子包](../src/quanttoolkit/model/mlp),
+可复用的损失放在 [loss 子包](../src/quanttoolkit/model/loss)。
+`PearsonCorrLoss` 可从 `quanttoolkit.model.loss` 导入, 用于最小化单日截面的
+`1 - Pearson IC`。输入为同日对齐的预测和标签, 形状为 `(N,)` 或 `(N, 1)`。
+详细口径和新增模型时可参考的结构见 [MLP 截面排序](mlp.md),
+完整调用见 [MLP 离线示例](../scripts/example_mlp_workflow.py)。
 
 ## 模型参数
 
